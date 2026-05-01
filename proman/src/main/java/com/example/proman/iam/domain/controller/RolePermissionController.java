@@ -25,7 +25,7 @@ public class RolePermissionController {
         return ResponseEntity.ok(rolePermissionService.createRole(dto));
     }
 
-    @PostMapping("/permissions")
+    @PostMapping("/assign-permissions")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
     public ResponseEntity<Void> assignPermissions(
             @RequestParam Long roleId,
@@ -44,13 +44,20 @@ public class RolePermissionController {
         return ResponseEntity.ok(rolePermissionService.getAllRoles());
     }
 
-    @GetMapping("/{roleId}/permissions")
+    @GetMapping("/{roleId}/assigned-permissions")
     public ResponseEntity<RoleResponseDTO> getPermissionsByRole(
             @PathVariable Long roleId
     ) {
         return ResponseEntity.ok(
                 rolePermissionService.getPermissionsByRole(roleId)
         );
+    }
+
+    @GetMapping("/{roleId}/unassigned-permissions")
+    public ResponseEntity<PermissionGroupedResponseDTO> getUnassignedPermissionsByRole(
+            @PathVariable Long roleId
+    ) {
+        return ResponseEntity.ok(rolePermissionService.getUnassignedPermissionsByRole(roleId));
     }
 
     @GetMapping("/get-all-permissions")
@@ -60,10 +67,18 @@ public class RolePermissionController {
 
     @DeleteMapping("/deassign-permissions")
     public ResponseEntity<String> deassignPermissionsFromRole(
+            @RequestParam Long roleId,
             @RequestBody RolePermissionDeassignDTO dto
     ) {
-        rolePermissionService.deassignPermissionsFromRole(dto);
+        rolePermissionService.deassignPermissionsFromRole(roleId, dto);
         return ResponseEntity.ok("Permissions deassigned from role successfully");
+    }
+
+    @DeleteMapping("/{roleId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")
+    public ResponseEntity<String> deleteRole(@PathVariable Long roleId) {
+        rolePermissionService.deleteRole(roleId);
+        return ResponseEntity.ok("Role deleted successfully");
     }
 
 }

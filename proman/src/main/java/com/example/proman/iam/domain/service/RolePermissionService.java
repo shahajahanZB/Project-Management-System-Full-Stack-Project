@@ -15,13 +15,17 @@ public interface RolePermissionService {
 
     RoleResponseDTO getPermissionsByRole(Long roleId);
 
+    PermissionGroupedResponseDTO getUnassignedPermissionsByRole(Long roleId);
+
     PermissionGroupedResponseDTO getAllPermissions();
 
 
     @Transactional
-    void deassignPermissionsFromRole(RolePermissionDeassignDTO dto);
+    void deassignPermissionsFromRole(Long roleId, RolePermissionDeassignDTO dto);
 
     RoleResponseDTO createRole(RoleCreateRequestDTO dto);
 
     List<UserRoleResponseDTO> getUsersByRole(String roleName);
+
+    void deleteRole(Long roleId);
 }

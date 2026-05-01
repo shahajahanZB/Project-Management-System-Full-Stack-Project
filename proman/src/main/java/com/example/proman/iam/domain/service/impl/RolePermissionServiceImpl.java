@@ -36,10 +36,23 @@ public class RolePermissionServiceImpl implements RolePermissionService {
         RoleEntity role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new RuntimeException("Role not found"));
 
+        if (permissionIds == null || permissionIds.isEmpty()) {
+            throw new IllegalArgumentException("Permission IDs cannot be empty");
+        }
+
+        if (permissionIds.size() != permissionIds.stream().distinct().count()) {
+            throw new IllegalArgumentException("Duplicate permission IDs are not allowed");
+        }
+
         List<PermissionEntity> permissions = permissionRepository.findAllById(permissionIds);
 
         if (permissions.size() != permissionIds.size()) {
             throw new RuntimeException("One or more permissions not found");
+        }
+
+        boolean alreadyAssigned = permissions.stream().anyMatch(role.getPermissions()::contains);
+        if (alreadyAssigned) {
+            throw new IllegalStateException("One or more permissions are already assigned to this role");
         }
 
         role.getPermissions().addAll(permissions);
@@ -73,6 +86,28 @@ public class RolePermissionServiceImpl implements RolePermissionService {
     }
 
     @Override
+    public PermissionGroupedResponseDTO getUnassignedPermissionsByRole(Long roleId) {
+        RoleEntity role = roleRepository.findById(roleId)
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+
+        Set<Long> assignedPermissionIds = role.getPermissions()
+                .stream()
+                .map(PermissionEntity::getId)
+                .collect(Collectors.toSet());
+
+        Map<PermissionCategory, List<PermissionDTO>> grouped = permissionRepository.findAll()
+                .stream()
+                .filter(permission -> !assignedPermissionIds.contains(permission.getId()))
+                .map(this::mapPermission)
+                .collect(Collectors.groupingBy(PermissionDTO::getCategory));
+
+        PermissionGroupedResponseDTO response = new PermissionGroupedResponseDTO();
+        response.setModulePermissions(grouped.getOrDefault(PermissionCategory.MODULE, Collections.emptyList()));
+        response.setDashboardPermissions(grouped.getOrDefault(PermissionCategory.DASHBOARD, Collections.emptyList()));
+        return response;
+    }
+
+    @Override
     public PermissionGroupedResponseDTO getAllPermissions() {
         Map<PermissionCategory, List<PermissionDTO>> grouped = permissionRepository.findAll()
                 .stream()
@@ -87,8 +122,8 @@ public class RolePermissionServiceImpl implements RolePermissionService {
 
     @Override
     @Transactional
-    public void deassignPermissionsFromRole(RolePermissionDeassignDTO dto) {
-        RoleEntity role = roleRepository.findById(dto.getRoleId())
+    public void deassignPermissionsFromRole(Long roleId, RolePermissionDeassignDTO dto) {
+        RoleEntity role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new RuntimeException("Role not found"));
 
         if (dto.getPermissionIds() == null || dto.getPermissionIds().isEmpty()) {
@@ -122,6 +157,29 @@ public class RolePermissionServiceImpl implements RolePermissionService {
                 .stream()
                 .map(u -> new UserRoleResponseDTO(u.getId(), u.getUsername(), u.getEmail()))
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void deleteRole(Long roleId) {
+        RoleEntity role = roleRepository.findById(roleId)
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+
+        String normalizedRoleName = role.getName() == null ? "" : role.getName().trim().toUpperCase();
+        if ("ADMIN".equals(normalizedRoleName) || "SUPERADMIN".equals(normalizedRoleName)) {
+            throw new IllegalStateException("Built-in roles cannot be deleted");
+        }
+
+        List<UserEntity> usersWithRole = userRepository.findUsersByRoleName(role.getName());
+        for (UserEntity user : usersWithRole) {
+            user.getRoles().remove(role);
+        }
+        userRepository.saveAll(usersWithRole);
+
+        role.getPermissions().clear();
+        roleRepository.save(role);
+
+        roleRepository.delete(role);
     }
 
     private RoleResponseDTO mapRole(RoleEntity role) {
