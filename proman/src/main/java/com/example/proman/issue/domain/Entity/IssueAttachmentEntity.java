@@ -12,7 +12,7 @@ import java.time.Instant;
 @Getter
 @Setter
 @NoArgsConstructor
-public class AttachmentEntity {
+public class IssueAttachmentEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

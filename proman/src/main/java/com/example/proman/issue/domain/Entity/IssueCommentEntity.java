@@ -11,7 +11,7 @@ import java.time.Instant;
 @Getter
 @Setter
 @NoArgsConstructor
-public class CommentEntity {
+public class IssueCommentEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

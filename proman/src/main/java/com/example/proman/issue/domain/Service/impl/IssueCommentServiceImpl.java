@@ -1,8 +1,9 @@
-package com.example.proman.issue.domain.Service;
+package com.example.proman.issue.domain.Service.impl;
 
-import com.example.proman.issue.domain.Dto.CommentDTO;
+import com.example.proman.issue.domain.Dto.IssueCommentDTO;
 import com.example.proman.issue.domain.Entity.*;
-import com.example.proman.issue.domain.repository.*;
+import com.example.proman.issue.domain.Repository.*;
+import com.example.proman.issue.domain.Service.IssueCommentService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,32 +14,32 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class CommentServiceImpl implements CommentService {
+public class IssueCommentServiceImpl implements IssueCommentService {
 
-    private final CommentRepository commentRepository;
+    private final IssueCommentRepository issueCommentRepository;
     private final IssueRepository issueRepository;
 
     @Override
-    public CommentDTO addComment(Long issueId, CommentDTO dto) {
+    public IssueCommentDTO addComment(Long issueId, IssueCommentDTO dto) {
 
         IssueEntity issue = issueRepository.findById(issueId)
                 .orElseThrow(() -> new RuntimeException("Issue not found"));
 
-        CommentEntity comment = new CommentEntity();
+        IssueCommentEntity comment = new IssueCommentEntity();
         comment.setIssue(issue);
         comment.setUserId(dto.getUserId());
-        comment.setContent(dto.getContent());
+        comment.setComment(dto.getContent());
         comment.setCreatedAt(Instant.now());
 
-        CommentEntity saved = commentRepository.save(comment);
+        IssueCommentEntity saved = issueCommentRepository.save(comment);
 
         return mapToDTO(saved);
     }
 
     @Override
-    public List<CommentDTO> getCommentsByIssue(Long issueId) {
+    public List<IssueCommentDTO> getCommentsByIssue(Long issueId) {
 
-        return commentRepository.findByIssueId(issueId)
+        return issueCommentRepository.findByIssueId(issueId)
                 .stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
@@ -46,14 +47,14 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public void deleteComment(Long commentId) {
-        commentRepository.deleteById(commentId);
+        issueCommentRepository.deleteById(commentId);
     }
 
-    private CommentDTO mapToDTO(CommentEntity c) {
-        return CommentDTO.builder()
+    private IssueCommentDTO mapToDTO(IssueCommentEntity c) {
+        return IssueCommentDTO.builder()
                 .id(c.getId())
                 .userId(c.getUserId())
-                .content(c.getContent())
+                .content(c.getComment())
                 .createdAt(c.getCreatedAt())
                 .build();
     }

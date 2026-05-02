@@ -1,9 +1,10 @@
-package com.example.proman.issue.domain.Service;
+package com.example.proman.issue.domain.Service.impl;
 
 import com.example.proman.issue.domain.Dto.*;
 import com.example.proman.issue.domain.Entity.*;
 import com.example.proman.issue.domain.Enums.*;
-import com.example.proman.issue.domain.repository.*;
+import com.example.proman.issue.domain.Repository.*;
+import com.example.proman.issue.domain.Service.IssueService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
 public class IssueServiceImpl implements IssueService {
 
     private final IssueRepository issueRepository;
-    private final TagRepository tagRepository;
+    private final IssueTagRepository issueTagRepository;
 
     // ==========================
     // CREATE ISSUE
@@ -117,8 +118,8 @@ public class IssueServiceImpl implements IssueService {
     // Update Existing Entity
     private void updateEntity(IssueEntity issue, IssueUpdateDTO dto) {
 
-        if (dto.getAssigneeID() != null)
-            issue.setAssigneeID(dto.getAssigneeID());
+        if (dto.getAssigneeId() != null)
+            issue.setAssigneeID(dto.getAssigneeId());
 
         if (dto.getTitle() != null)
             issue.setTitle(dto.getTitle());
@@ -167,9 +168,9 @@ public class IssueServiceImpl implements IssueService {
     // ==========================
     // TAG FETCHING
     // ==========================
-    private Set<TagEntity> fetchTags(Set<Long> tagIds) {
+    private Set<IssueTagEntity> fetchTags(Set<Long> tagIds) {
         if (tagIds == null) return new HashSet<>();
-        return new HashSet<>(tagRepository.findAllById(tagIds));
+        return new HashSet<>(issueTagRepository.findAllById(tagIds));
     }
 
     // ==========================
@@ -197,7 +198,7 @@ public class IssueServiceImpl implements IssueService {
         // ONLY TAGS (clean architecture)
         if (issue.getTags() != null) {
             dto.setTags(issue.getTags().stream()
-                    .map(tag -> TagDTO.builder()
+                    .map(tag -> IssueTagDTO.builder()
                             .id(tag.getId())
                             .name(tag.getName())
                             .build())

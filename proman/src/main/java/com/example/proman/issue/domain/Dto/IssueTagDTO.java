@@ -7,11 +7,9 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AttachmentDTO {
+public class IssueTagDTO {
 
     private Long id;
 
-    private String fileName;
-
-    private String fileUrl;
+    private String name;
 }

@@ -57,10 +57,10 @@ public class IssueEntity {
     private Long createdById;
 
     @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL)
-    private List<CommentEntity> comments = new ArrayList<>();
+    private List<IssueCommentEntity> comments = new ArrayList<>();
 
     @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL)
-    private List<AttachmentEntity> attachments = new ArrayList<>();
+    private List<IssueAttachmentEntity> attachments = new ArrayList<>();
 
     @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL)
     private List<IssueActivityEntity> activities = new ArrayList<>();
@@ -71,6 +71,6 @@ public class IssueEntity {
             joinColumns = @JoinColumn(name = "issue_id", nullable = false),
             inverseJoinColumns = @JoinColumn(name = "tag_id", nullable = false)
     )
-    private Set<TagEntity> tags = new HashSet<>();
+    private Set<IssueTagEntity> tags = new HashSet<>();
 
 }

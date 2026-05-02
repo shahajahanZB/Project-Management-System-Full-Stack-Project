@@ -12,7 +12,7 @@ import java.util.*;
 @Getter
 @Setter
 @NoArgsConstructor
-public class TagEntity {
+public class IssueTagEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

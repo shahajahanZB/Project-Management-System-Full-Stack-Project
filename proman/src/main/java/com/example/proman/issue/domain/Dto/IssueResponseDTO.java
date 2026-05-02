@@ -39,11 +39,11 @@ public class IssueResponseDTO {
     private Long createdById;
 
     // RELATIONS (mapped DTOs)
-    private List<CommentDTO> comments;
+    private List<IssueCommentDTO> comments;
 
-    private List<AttachmentDTO> attachments;
+    private List<IssueAttachmentDTO> attachments;
 
     private List<IssueActivityDTO> activities;
 
-    private Set<TagDTO> tags;
+    private Set<IssueTagDTO> tags;
 }

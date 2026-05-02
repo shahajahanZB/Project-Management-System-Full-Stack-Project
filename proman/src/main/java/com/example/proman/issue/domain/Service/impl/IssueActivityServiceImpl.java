@@ -1,8 +1,9 @@
-package com.example.proman.issue.domain.Service;
+package com.example.proman.issue.domain.Service.impl;
 
 import com.example.proman.issue.domain.Dto.IssueActivityDTO;
 import com.example.proman.issue.domain.Entity.*;
-import com.example.proman.issue.domain.repository.*;
+import com.example.proman.issue.domain.Repository.*;
+import com.example.proman.issue.domain.Service.IssueActivityService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,8 +27,8 @@ public class IssueActivityServiceImpl implements IssueActivityService {
 
         IssueActivityEntity activity = new IssueActivityEntity();
         activity.setIssue(issue);
-        activity.setAction(action);
-        activity.setPerformedBy(userId);
+        activity.setActivity(action);
+        activity.setUserId(userId);
         activity.setCreatedAt(Instant.now());
 
         activityRepository.save(activity);
@@ -40,8 +41,8 @@ public class IssueActivityServiceImpl implements IssueActivityService {
                 .stream()
                 .map(a -> IssueActivityDTO.builder()
                         .id(a.getId())
-                        .action(a.getAction())
-                        .performedBy(a.getPerformedBy())
+                        .action(a.getActivity())
+                        .performedBy(a.getUserId())
                         .createdAt(a.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
