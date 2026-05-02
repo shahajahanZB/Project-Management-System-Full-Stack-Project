@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface IssueTagRepository extends JpaRepository<IssueTagEntity, Long> {
+public interface issueTagRepository extends JpaRepository<IssueTagEntity, Long> {
 
     Optional<IssueTagEntity> findByNameIgnoreCase(String name);
 }
