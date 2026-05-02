@@ -61,7 +61,6 @@ export type AssignPermissionsPayload = {
 };
 
 export type DeassignPermissionsPayload = {
-  roleId: number;
   permissionIds: number[];
 };
 

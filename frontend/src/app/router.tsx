@@ -13,6 +13,7 @@ import {
   AdminUserDetailPage,
   AdminRolesPermissionsPage,
   AdminRoleMembersPage,
+  AdminRoleDetailPage,
 } from "@/features/admin/pages";
 import RequireAdmin from "@/components/RequireAdmin";
 import { UserDashboardPage } from "@/features/dashboard/pages";
@@ -55,6 +56,7 @@ export const router = createBrowserRouter([
           { path: "users", element: <AdminUsersPage /> },
           { path: "users/:userId", element: <AdminUserDetailPage /> },
           { path: "roles", element: <AdminRolesPermissionsPage /> },
+          { path: "roles/:roleId", element: <AdminRoleDetailPage /> },
           { path: "roles/members", element: <AdminRoleMembersPage /> },
         ],
       },

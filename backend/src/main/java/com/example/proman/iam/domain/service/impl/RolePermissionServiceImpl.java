@@ -185,6 +185,12 @@ public class RolePermissionServiceImpl implements RolePermissionService {
         dto.setRoleId(role.getRoleId());
         dto.setRoleName(role.getName());
         dto.setPermissionCount(role.getPermissions().size());
+        dto.setPermissions(
+                role.getPermissions()
+                        .stream()
+                        .map(this::mapPermission)
+                        .toList()
+        );
         return dto;
     }
 
