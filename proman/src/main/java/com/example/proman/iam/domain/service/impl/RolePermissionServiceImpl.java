@@ -186,20 +186,7 @@ public class RolePermissionServiceImpl implements RolePermissionService {
         RoleResponseDTO dto = new RoleResponseDTO();
         dto.setRoleId(role.getRoleId());
         dto.setRoleName(role.getName());
-
-        Map<PermissionCategory, List<PermissionDTO>> grouped = role.getPermissions()
-                .stream()
-                .map(p -> {
-                    PermissionDTO permDto = new PermissionDTO();
-                    permDto.setId(p.getId());
-                    permDto.setAccess(p.getAccess());
-                    permDto.setCategory(p.getCategory());
-                    return permDto;
-                })
-                .collect(Collectors.groupingBy(PermissionDTO::getCategory));
-
-        dto.setModulePermissions(grouped.getOrDefault(PermissionCategory.MODULE, Collections.emptyList()));
-        dto.setDashboardPermissions(grouped.getOrDefault(PermissionCategory.DASHBOARD, Collections.emptyList()));
+        dto.setPermissionCount(role.getPermissions().size());
         return dto;
     }
 
