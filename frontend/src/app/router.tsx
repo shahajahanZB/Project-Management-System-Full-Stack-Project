@@ -1,4 +1,9 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import {
+  createBrowserRouter,
+  Navigate,
+  Outlet,
+  useParams,
+} from "react-router-dom";
 import { AppLayout } from "@/components/shared/AppLayout";
 import {
   ForgotPasswordPage,
@@ -16,9 +21,32 @@ import {
   AdminRoleDetailPage,
 } from "@/features/admin/pages";
 import RequireAdmin from "@/components/RequireAdmin";
+import RequirePermission from "@/components/RequirePermission";
 import { UserDashboardPage } from "@/features/dashboard/pages";
 import { ProjectsPage } from "@/features/projects/pages/ProjectsPage";
+import { ProjectsCreatePage } from "@/features/projects/pages/ProjectsCreatePage";
+import { ProjectsDetailPage } from "@/features/projects/pages/ProjectsDetailPage";
+import { EpicsPage, EpicDetailPage } from "@/features/epics";
+import { ProjectKanbanPage } from "@/features/projects/pages/ProjectKanbanPage";
+import { ProjectIssuesPage } from "@/features/projects/pages/ProjectIssuesPage";
+import { ProjectTeamPage } from "@/features/team/pages";
+import { TasksPage } from "@/features/tasks/pages/TasksPage";
+import { UsersPage } from "@/features/users/pages/UsersPage";
+import { UnauthorizedPage } from "@/pages/UnauthorizedPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
+import { ProjectProvider } from "@/contexts/ProjectContext";
+
+function ProjectDetailLayout() {
+  const { projectId } = useParams<{ projectId: string }>();
+
+  if (!projectId) return <Navigate to="/projects" replace />;
+
+  return (
+    <ProjectProvider projectId={projectId}>
+      <Outlet />
+    </ProjectProvider>
+  );
+}
 
 export const router = createBrowserRouter([
   {
@@ -42,7 +70,97 @@ export const router = createBrowserRouter([
       },
       {
         path: "dashboard",
-        element: <UserDashboardPage />,
+        element: <Navigate to="/" replace />,
+      },
+      {
+        path: "unauthorized",
+        element: <UnauthorizedPage />,
+      },
+      {
+        path: "projects",
+        element: (
+          <RequirePermission perm="PROJECT_VIEW">
+            <ProjectsPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "projects/new",
+        element: (
+          <RequirePermission perm="PROJECT_CREATE">
+            <ProjectsCreatePage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "projects/:projectId",
+        element: <ProjectDetailLayout />,
+        children: [
+          {
+            index: true,
+            element: (
+              <RequirePermission perm="PROJECT_VIEW">
+                <ProjectsDetailPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: "epics",
+            element: (
+              <RequirePermission perm="EPIC_VIEW">
+                <EpicsPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: "epics/:epicId",
+            element: (
+              <RequirePermission perm="EPIC_VIEW">
+                <EpicDetailPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: "kanban",
+            element: (
+              <RequirePermission perm="STORY_VIEW">
+                <ProjectKanbanPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: "issues",
+            element: (
+              <RequirePermission perm="STORY_VIEW">
+                <ProjectIssuesPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: "team",
+            element: (
+              <RequirePermission perm="PROJECT_MANAGE_MEMBERS">
+                <ProjectTeamPage />
+              </RequirePermission>
+            ),
+          },
+        ],
+      },
+      {
+        path: "tasks",
+        element: (
+          <RequirePermission perm="USER_STORY_VIEW">
+            <TasksPage />
+          </RequirePermission>
+        ),
+      },
+      {
+        path: "users",
+        element: (
+          <RequirePermission perm="USER_UPDATE">
+            <UsersPage />
+          </RequirePermission>
+        ),
       },
       {
         path: "admin",
@@ -62,11 +180,7 @@ export const router = createBrowserRouter([
       },
       {
         index: true,
-        element: <Navigate to="/dashboard" replace />,
-      },
-      {
-        path: "projects",
-        element: <ProjectsPage />,
+        element: <UserDashboardPage />,
       },
     ],
   },

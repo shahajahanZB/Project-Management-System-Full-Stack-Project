@@ -9,6 +9,7 @@ export function AppLayout() {
     "/sign-up",
     "/forgot-password",
     "/verify-otp",
+    "/unauthorized",
     "/dashboard",
   ];
   const isNoChromeRoute =

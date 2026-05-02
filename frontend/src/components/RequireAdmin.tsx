@@ -11,7 +11,7 @@ export default function RequireAdmin({ children }: { children: JSX.Element }) {
     ["ADMIN", "SUPERADMIN"].includes(r?.name ?? r),
   );
 
-  if (!isAdmin) return <Navigate to="/dashboard" replace />;
+  if (!isAdmin) return <Navigate to="/" replace />;
 
   return children;
 }

@@ -33,6 +33,7 @@ export type User = {
   username: string;
   email: string;
   roles?: Role[];
+  permissions?: string[];
 };
 
 export type AssignRolesPayload = {
