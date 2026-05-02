@@ -5,3 +5,4 @@ export { default as AdminUsersPage } from "./AdminUsersPage";
 export { default as AdminUserDetailPage } from "./AdminUserDetailPage";
 export { default as AdminRolesPermissionsPage } from "./AdminRolesPermissionsPage";
 export { default as AdminRoleMembersPage } from "./AdminRoleMembersPage";
+export { default as AdminRoleDetailPage } from "./AdminRoleDetailPage";

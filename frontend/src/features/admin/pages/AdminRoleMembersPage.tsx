@@ -26,38 +26,75 @@ export default function AdminRoleMembersPage() {
   const deassignRoleMutation = useDeassignRolesFromUsersMutation();
 
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
-  const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(
-    new Set(),
-  );
+  const [selectedAssignedUserIds, setSelectedAssignedUserIds] = useState<
+    Set<number>
+  >(new Set());
+  const [selectedAvailableUserIds, setSelectedAvailableUserIds] = useState<
+    Set<number>
+  >(new Set());
   const [isLoading, setIsLoading] = useState(false);
 
-  const selectedRole = rolesQuery.data?.find((r) => r.id === selectedRoleId);
+  const selectedRole = rolesQuery.data?.find(
+    (r: any) => (r.id ?? r.roleId) === selectedRoleId,
+  ) as any;
+  const selectedRoleName = selectedRole?.name ?? selectedRole?.roleName ?? "";
+  const isProtectedAdminRole = ["ADMIN", "SUPERADMIN"].includes(
+    String(selectedRoleName).trim().toUpperCase(),
+  );
+
+  const isAdminUser = (user: any) =>
+    user.roles?.some((role: any) =>
+      ["ADMIN", "SUPERADMIN"].includes(
+        String(role?.name ?? role?.roleName ?? "")
+          .trim()
+          .toUpperCase(),
+      ),
+    );
+
   const usersInRole =
     usersQuery.data?.filter((u) =>
-      u.roles?.some((r) => r.id === selectedRoleId),
+      u.roles?.some((r: any) => (r.id ?? r.roleId) === selectedRoleId),
+    ) ?? [];
+  const usersNotInRole =
+    usersQuery.data?.filter(
+      (u) =>
+        !isAdminUser(u) &&
+        !u.roles?.some((r: any) => (r.id ?? r.roleId) === selectedRoleId),
     ) ?? [];
 
-  const handleToggleUser = (userId: number) => {
-    const newSelected = new Set(selectedUserIds);
-    if (newSelected.has(userId)) {
-      newSelected.delete(userId);
-    } else {
-      newSelected.add(userId);
-    }
-    setSelectedUserIds(newSelected);
+  const initialAssignedUserIds = new Set(usersInRole.map((u) => u.id));
+
+  useEffect(() => {
+    setSelectedAssignedUserIds(new Set(initialAssignedUserIds));
+    setSelectedAvailableUserIds(new Set());
+  }, [selectedRoleId]);
+
+  const handleToggleAssignedUser = (userId: number) => {
+    if (isProtectedAdminRole) return;
+    const next = new Set(selectedAssignedUserIds);
+    if (next.has(userId)) next.delete(userId);
+    else next.add(userId);
+    setSelectedAssignedUserIds(next);
+  };
+
+  const handleToggleAvailableUser = (userId: number) => {
+    if (isProtectedAdminRole) return;
+    const next = new Set(selectedAvailableUserIds);
+    if (next.has(userId)) next.delete(userId);
+    else next.add(userId);
+    setSelectedAvailableUserIds(next);
   };
 
   const handleSave = async () => {
     if (!selectedRoleId) return;
+    if (isProtectedAdminRole) return;
 
     setIsLoading(true);
     try {
-      const userIdsToAssign = Array.from(selectedUserIds).filter(
-        (userId) => !usersInRole.find((u) => u.id === userId),
+      const userIdsToAssign = Array.from(selectedAvailableUserIds);
+      const userIdsToDeassign = Array.from(initialAssignedUserIds).filter(
+        (userId) => !selectedAssignedUserIds.has(userId),
       );
-      const userIdsToDeassign = usersInRole
-        .map((u) => u.id)
-        .filter((userId) => !selectedUserIds.has(userId));
 
       if (userIdsToAssign.length > 0) {
         await assignRoleMutation.mutateAsync({
@@ -74,7 +111,8 @@ export default function AdminRoleMembersPage() {
       }
 
       await queryClient.invalidateQueries({ queryKey: ["users"] });
-      setSelectedUserIds(new Set());
+      setSelectedAssignedUserIds(new Set(initialAssignedUserIds));
+      setSelectedAvailableUserIds(new Set());
       alert("Role assignments updated successfully");
     } catch (err) {
       alert((err as any)?.message ?? "Failed to update role assignments");
@@ -146,13 +184,6 @@ export default function AdminRoleMembersPage() {
           onChange={(e) => {
             const roleId = e.target.value ? Number(e.target.value) : null;
             setSelectedRoleId(roleId);
-            setSelectedUserIds(
-              new Set(
-                usersQuery.data
-                  ?.filter((u) => u.roles?.some((r) => r.id === roleId))
-                  .map((u) => u.id) ?? [],
-              ),
-            );
           }}
           className="mt-2 w-full rounded-md border px-3 py-2"
         >
@@ -167,105 +198,172 @@ export default function AdminRoleMembersPage() {
 
       {/* Users Table */}
       {selectedRoleId ? (
-        <div className="overflow-x-auto">
+        <div className="space-y-6">
           <div
             className={`mb-4 rounded-md ${isDarkMode ? "bg-blue-900 text-blue-100" : "bg-blue-50 text-blue-900"} p-3 text-sm`}
           >
             {usersInRole.length} of {usersQuery.data?.length ?? 0} users are
-            assigned to <strong>{selectedRole?.name}</strong>
+            assigned to{" "}
+            <strong>{selectedRoleName || selectedRole?.name}</strong>
+            {isProtectedAdminRole && (
+              <span className="ml-2 rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                Read only
+              </span>
+            )}
           </div>
-          <table className="w-full">
-            <thead>
-              <tr
-                className={
-                  isDarkMode
-                    ? "border-b border-slate-800"
-                    : "border-b border-slate-200"
-                }
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div
+              className={`rounded-lg border p-6 ${isDarkMode ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"}`}
+            >
+              <h2
+                className={`mb-4 text-lg font-semibold ${isDarkMode ? "text-slate-100" : "text-slate-900"}`}
               >
-                <th className="px-4 py-3 text-left">
-                  <input
-                    type="checkbox"
-                    checked={
-                      usersQuery.data
-                        ? selectedUserIds.size === usersQuery.data.length
-                        : false
-                    }
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedUserIds(
-                          new Set(usersQuery.data?.map((u) => u.id) ?? []),
-                        );
-                      } else {
-                        setSelectedUserIds(new Set());
+                Assigned Users
+              </h2>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr
+                      className={
+                        isDarkMode
+                          ? "border-b border-slate-700"
+                          : "border-b border-slate-200"
                       }
-                    }}
-                    className="rounded border"
-                  />
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">
-                  Username
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">
-                  Email
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {usersQuery.data?.map((user) => {
-                const isInRole = usersInRole.some((u) => u.id === user.id);
-                const isSelected = selectedUserIds.has(user.id);
-                return (
-                  <tr
-                    key={user.id}
-                    className={
-                      isDarkMode
-                        ? "border-b border-slate-800 hover:bg-slate-800/60"
-                        : "border-b border-slate-200 hover:bg-slate-50"
-                    }
-                  >
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleToggleUser(user.id)}
-                        className="rounded border"
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-sm">{user.username}</td>
-                    <td className="px-4 py-3 text-sm">{user.email}</td>
-                    <td className="px-4 py-3 text-sm">
-                      {isSelected && !isInRole && (
-                        <span className="inline-block rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
-                          Will enroll
-                        </span>
-                      )}
-                      {!isSelected && isInRole && (
-                        <span className="inline-block rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
-                          Will deroll
-                        </span>
-                      )}
-                      {isSelected && isInRole && (
-                        <span className="inline-block rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
-                          Keep
-                        </span>
-                      )}
-                      {!isSelected && !isInRole && (
-                        <span
-                          className={`text-xs ${isDarkMode ? "text-slate-400" : "text-slate-600"}`}
+                    >
+                      <th className="px-4 py-3 text-left text-sm font-semibold">
+                        Username
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">
+                        Email
+                      </th>
+                      <th className="px-4 py-3 text-center text-sm font-semibold">
+                        Keep
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usersInRole.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={3}
+                          className="px-4 py-3 text-center text-sm text-slate-500"
                         >
-                          Not assigned
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                          No users assigned
+                        </td>
+                      </tr>
+                    ) : (
+                      usersInRole.map((user) => {
+                        const isKept = selectedAssignedUserIds.has(user.id);
+                        return (
+                          <tr
+                            key={user.id}
+                            className={
+                              isDarkMode
+                                ? "border-b border-slate-800 hover:bg-slate-800/60"
+                                : "border-b border-slate-200 hover:bg-slate-50"
+                            }
+                          >
+                            <td className="px-4 py-3 text-sm">
+                              {user.username}
+                            </td>
+                            <td className="px-4 py-3 text-sm">{user.email}</td>
+                            <td className="px-4 py-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isKept}
+                                disabled={isProtectedAdminRole}
+                                onChange={() =>
+                                  handleToggleAssignedUser(user.id)
+                                }
+                                className="rounded border disabled:cursor-not-allowed"
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div
+              className={`rounded-lg border p-6 ${isDarkMode ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"}`}
+            >
+              <h2
+                className={`mb-4 text-lg font-semibold ${isDarkMode ? "text-slate-100" : "text-slate-900"}`}
+              >
+                Available Users
+              </h2>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr
+                      className={
+                        isDarkMode
+                          ? "border-b border-slate-700"
+                          : "border-b border-slate-200"
+                      }
+                    >
+                      <th className="px-4 py-3 text-left text-sm font-semibold">
+                        Username
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">
+                        Email
+                      </th>
+                      <th className="px-4 py-3 text-center text-sm font-semibold">
+                        Add
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usersNotInRole.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={3}
+                          className="px-4 py-3 text-center text-sm text-slate-500"
+                        >
+                          No users available
+                        </td>
+                      </tr>
+                    ) : (
+                      usersNotInRole.map((user) => {
+                        const isSelected = selectedAvailableUserIds.has(
+                          user.id,
+                        );
+                        return (
+                          <tr
+                            key={user.id}
+                            className={
+                              isDarkMode
+                                ? "border-b border-slate-800 hover:bg-slate-800/60"
+                                : "border-b border-slate-200 hover:bg-slate-50"
+                            }
+                          >
+                            <td className="px-4 py-3 text-sm">
+                              {user.username}
+                            </td>
+                            <td className="px-4 py-3 text-sm">{user.email}</td>
+                            <td className="px-4 py-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                disabled={isProtectedAdminRole}
+                                onChange={() =>
+                                  handleToggleAvailableUser(user.id)
+                                }
+                                className="rounded border disabled:cursor-not-allowed"
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
         <div
@@ -283,13 +381,17 @@ export default function AdminRoleMembersPage() {
 
       {/* Action Buttons */}
       {selectedRoleId && (
-        <div className="flex gap-2">
+        <div className="flex justify-end gap-2">
           <Button
             onClick={handleSave}
-            className="bg-indigo-600 text-white hover:bg-indigo-700"
-            disabled={isLoading}
+            className="bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+            disabled={isLoading || isProtectedAdminRole}
           >
-            Save Changes
+            {isProtectedAdminRole
+              ? "Read Only"
+              : isLoading
+                ? "Saving..."
+                : "Save Changes"}
           </Button>
           <Button
             onClick={() => navigate("/admin/roles")}

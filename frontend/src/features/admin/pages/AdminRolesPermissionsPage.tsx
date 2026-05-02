@@ -1,4 +1,4 @@
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { AlertCircle, Plus, Eye, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -9,9 +9,9 @@ import {
   useCreateRoleMutation,
   useGetAllPermissions,
   useAssignPermissionsToRoleMutation,
+  useGetRoleWithPermissions,
 } from "@/features/auth/hooks";
 import { useQueryClient } from "@tanstack/react-query";
-import type { Role } from "@/features/auth/types";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 type Context = { isDarkMode: boolean };
@@ -20,6 +20,7 @@ export default function AdminRolesPermissionsPage() {
   useDocumentTitle("Admin - Roles & Permissions");
   const { isDarkMode } = useOutletContext<Context>();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const rolesQuery = useGetAllRoles();
   const deleteRoleMutation = useDeleteRoleMutation();
@@ -30,10 +31,14 @@ export default function AdminRolesPermissionsPage() {
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<number[]>(
     [],
   );
-  const [viewingRole, setViewingRole] = useState<Role | null>(null);
+  const [viewingRoleId, setViewingRoleId] = useState<number | null>(null);
 
   const permissionsQuery = useGetAllPermissions();
   const assignPermissionsMutation = useAssignPermissionsToRoleMutation();
+  const viewingRoleQuery = useGetRoleWithPermissions(
+    viewingRoleId ?? 0,
+    viewingRoleId !== null,
+  );
 
   const adminRoleNames = ["ADMIN", "SUPERADMIN"];
 
@@ -133,24 +138,22 @@ export default function AdminRolesPermissionsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header (with action button right-aligned) */}
       <div className="flex items-center justify-between">
         <h1
           className={`text-3xl font-bold ${isDarkMode ? "text-white" : "text-slate-900"}`}
         >
           Roles & Permissions
         </h1>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex gap-3">
-        <Button
-          onClick={() => setOpenCreateModal(true)}
-          className="flex items-center gap-2 bg-indigo-600 text-white hover:bg-indigo-700"
-        >
-          <Plus className="size-4" />
-          Create Role
-        </Button>
+        <div>
+          <Button
+            onClick={() => setOpenCreateModal(true)}
+            className="flex items-center gap-2 bg-indigo-600 text-white hover:bg-indigo-700"
+          >
+            <Plus className="size-4" />
+            Create Role
+          </Button>
+        </div>
       </div>
 
       {/* Create Role Modal */}
@@ -290,10 +293,12 @@ export default function AdminRolesPermissionsPage() {
                 return (
                   <tr
                     key={id ?? name}
+                    onClick={() => navigate(`/admin/roles/${id}`)}
+                    role="button"
                     className={
                       isDarkMode
-                        ? "border-b border-slate-800 hover:bg-slate-800/60"
-                        : "border-b border-slate-200 hover:bg-slate-50"
+                        ? "border-b border-slate-800 hover:bg-slate-800/60 cursor-pointer"
+                        : "border-b border-slate-200 hover:bg-slate-50 cursor-pointer"
                     }
                   >
                     <td className="px-4 py-3 text-sm">{name}</td>
@@ -316,13 +321,19 @@ export default function AdminRolesPermissionsPage() {
                               ? "rounded-md bg-slate-800 p-2 text-slate-300 hover:bg-slate-700"
                               : "rounded-md bg-blue-100 p-2 text-blue-600 hover:bg-blue-200"
                           }
-                          onClick={() => setViewingRole(role)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setViewingRoleId(id);
+                          }}
                           title="View permissions"
                         >
                           <Eye className="size-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteRole(id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteRole(id);
+                          }}
                           disabled={
                             deleteRoleMutation.isPending ||
                             adminRoleNames.includes((name ?? "").toUpperCase())
@@ -347,17 +358,19 @@ export default function AdminRolesPermissionsPage() {
       )}
 
       {/* View Role Modal */}
-      {viewingRole && (
+      {viewingRoleId !== null && (
         <Modal
-          isOpen={!!viewingRole}
-          onClose={() => setViewingRole(null)}
-          title={`Permissions for ${viewingRole?.name ?? viewingRole?.id}`}
+          isOpen={viewingRoleId !== null}
+          onClose={() => setViewingRoleId(null)}
+          title={`Permissions for ${viewingRoleQuery.data?.name ?? viewingRoleId}`}
         >
           <div className="space-y-3">
-            {(viewingRole.permissions ?? []).length === 0 ? (
+            {viewingRoleQuery.isLoading ? (
+              <p className="text-sm text-slate-500">Loading permissions...</p>
+            ) : (viewingRoleQuery.data?.permissions ?? []).length === 0 ? (
               <p className="text-sm text-slate-500">No permissions assigned</p>
             ) : (
-              (viewingRole.permissions ?? []).map((p: any) => (
+              (viewingRoleQuery.data?.permissions ?? []).map((p: any) => (
                 <div key={p.id ?? p} className="text-sm">
                   {p.access ?? String(p)}
                 </div>
