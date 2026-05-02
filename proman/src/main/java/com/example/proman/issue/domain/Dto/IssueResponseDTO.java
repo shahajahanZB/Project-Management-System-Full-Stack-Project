@@ -1,7 +1,49 @@
-//package com.example.proman.issue.domain.Dto;
-//
-//import
-//
-//public class IssueResponseDTO {
-//
-//}
+package com.example.proman.issue.domain.Dto;
+
+import lombok.*;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Set;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class IssueResponseDTO {
+
+    private Long id;
+
+    private Long assigneeID;
+
+    private String title;
+
+    private String description;
+
+    private Instant createdAt;
+
+    private Instant updatedAt;
+
+    private Boolean isBlocked;
+
+    // ENUMS as String
+    private String status;
+
+    private String type;
+
+    private String severity;
+
+    private String priority;
+
+    private Long createdById;
+
+    // RELATIONS (mapped DTOs)
+    private List<CommentDTO> comments;
+
+    private List<AttachmentDTO> attachments;
+
+    private List<IssueActivityDTO> activities;
+
+    private Set<TagDTO> tags;
+}
