@@ -13,9 +13,9 @@ public interface RolePermissionService {
 
     List<RoleResponseDTO> getAllRoles();
 
-    RoleResponseDTO getPermissionsByRole(Long roleId);
+    List<PermissionDTO> getPermissionsByRole(Long roleId);
 
-    PermissionGroupedResponseDTO getUnassignedPermissionsByRole(Long roleId);
+    List<PermissionDTO> getUnassignedPermissionsByRole(Long roleId);
 
     PermissionGroupedResponseDTO getAllPermissions();
 

@@ -79,14 +79,17 @@ public class RolePermissionServiceImpl implements RolePermissionService {
     }
 
     @Override
-    public RoleResponseDTO getPermissionsByRole(Long roleId) {
+    public List<PermissionDTO> getPermissionsByRole(Long roleId) {
         RoleEntity role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new RuntimeException("Role not found"));
-        return mapRole(role);
+        return role.getPermissions()
+                .stream()
+                .map(this::mapPermission)
+                .toList();
     }
 
     @Override
-    public PermissionGroupedResponseDTO getUnassignedPermissionsByRole(Long roleId) {
+    public List<PermissionDTO> getUnassignedPermissionsByRole(Long roleId) {
         RoleEntity role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new RuntimeException("Role not found"));
 
@@ -95,16 +98,11 @@ public class RolePermissionServiceImpl implements RolePermissionService {
                 .map(PermissionEntity::getId)
                 .collect(Collectors.toSet());
 
-        Map<PermissionCategory, List<PermissionDTO>> grouped = permissionRepository.findAll()
+        return permissionRepository.findAll()
                 .stream()
                 .filter(permission -> !assignedPermissionIds.contains(permission.getId()))
                 .map(this::mapPermission)
-                .collect(Collectors.groupingBy(PermissionDTO::getCategory));
-
-        PermissionGroupedResponseDTO response = new PermissionGroupedResponseDTO();
-        response.setModulePermissions(grouped.getOrDefault(PermissionCategory.MODULE, Collections.emptyList()));
-        response.setDashboardPermissions(grouped.getOrDefault(PermissionCategory.DASHBOARD, Collections.emptyList()));
-        return response;
+                .toList();
     }
 
     @Override

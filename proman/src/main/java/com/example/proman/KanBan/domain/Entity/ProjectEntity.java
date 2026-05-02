@@ -61,9 +61,9 @@ public class ProjectEntity {
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<EpicEntity> epics = new HashSet<>();
 
-//    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-//    private Set<UserStoryEntity> userStories = new HashSet<>();
-//
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<UserStoryEntity> userStories = new HashSet<>();
+
 //    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
 //    private Set<TaskEntity> tasks = new HashSet<>();
 

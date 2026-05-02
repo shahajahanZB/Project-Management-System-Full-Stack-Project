@@ -8,6 +8,7 @@ import com.example.proman.KanBan.domain.dto.EpicResponseDTO;
 import com.example.proman.KanBan.domain.repository.EpicRepository;
 import com.example.proman.KanBan.domain.repository.ProjectMembershipRepository;
 import com.example.proman.KanBan.domain.repository.ProjectRepository;
+import com.example.proman.KanBan.domain.repository.UserStoryRepository;
 import com.example.proman.KanBan.domain.service.EpicService;
 import com.example.proman.iam.domain.entity.UserEntity;
 import com.example.proman.iam.domain.entity.UserPrincipal;
@@ -29,15 +30,18 @@ public class EpicServiceImpl implements EpicService {
     private final EpicRepository epicRepository;
     private final ProjectRepository projectRepository;
     private final ProjectMembershipRepository projectMembershipRepository;
+    private final UserStoryRepository userStoryRepository;
     private final UserRepository userRepository;
 
     public EpicServiceImpl(EpicRepository epicRepository,
                            ProjectRepository projectRepository,
                            ProjectMembershipRepository projectMembershipRepository,
+                           UserStoryRepository userStoryRepository,
                            UserRepository userRepository) {
         this.epicRepository = epicRepository;
         this.projectRepository = projectRepository;
         this.projectMembershipRepository = projectMembershipRepository;
+        this.userStoryRepository = userStoryRepository;
         this.userRepository = userRepository;
     }
 
@@ -169,7 +173,9 @@ public class EpicServiceImpl implements EpicService {
         dto.setProjectId(epic.getProject().getId());
         dto.setName(epic.getName());
         dto.setStatus(epic.getStatus());
-        dto.setProgress(epic.getProgress());
+        long totalStories = userStoryRepository.countByEpic_Id(epic.getId());
+        long closedStories = userStoryRepository.countByEpic_IdAndStatus_ClosedTrue(epic.getId());
+        dto.setProgress(totalStories == 0 ? 0 : (int) ((closedStories * 100) / totalStories));
         dto.setAssignedUserIds(epic.getAssignedUsers().stream()
                 .map(UserEntity::getId)
                 .collect(Collectors.toSet()));

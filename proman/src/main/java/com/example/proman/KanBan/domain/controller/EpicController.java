@@ -28,17 +28,19 @@ public class EpicController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('EPIC_CREATE') or @projectService.isProjectOwner(#request.projectId)")
+    @PreAuthorize("hasAuthority('EPIC_CREATE')")
     public ResponseEntity<EpicResponseDTO> createEpic(@Valid @RequestBody EpicCreateRequestDTO request) {
         return ResponseEntity.status(201).body(epicService.createEpic(request));
     }
 
     @GetMapping("/project/{projectId}")
+    @PreAuthorize("hasAuthority('EPIC_VIEW')")
     public ResponseEntity<List<EpicResponseDTO>> getEpicsByProject(@PathVariable Long projectId) {
         return ResponseEntity.ok(epicService.getEpicsByProject(projectId));
     }
 
     @GetMapping("/{epicId}")
+    @PreAuthorize("hasAuthority('EPIC_VIEW')")
     public ResponseEntity<EpicResponseDTO> getEpicById(@PathVariable Long epicId) {
         return ResponseEntity.ok(epicService.getEpicById(epicId));
     }

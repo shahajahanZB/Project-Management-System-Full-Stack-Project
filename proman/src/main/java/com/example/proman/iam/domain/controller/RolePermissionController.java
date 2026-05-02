@@ -45,7 +45,7 @@ public class RolePermissionController {
     }
 
     @GetMapping("/{roleId}/assigned-permissions")
-    public ResponseEntity<RoleResponseDTO> getPermissionsByRole(
+    public ResponseEntity<List<PermissionDTO>> getPermissionsByRole(
             @PathVariable Long roleId
     ) {
         return ResponseEntity.ok(
@@ -54,7 +54,7 @@ public class RolePermissionController {
     }
 
     @GetMapping("/{roleId}/unassigned-permissions")
-    public ResponseEntity<PermissionGroupedResponseDTO> getUnassignedPermissionsByRole(
+    public ResponseEntity<List<PermissionDTO>> getUnassignedPermissionsByRole(
             @PathVariable Long roleId
     ) {
         return ResponseEntity.ok(rolePermissionService.getUnassignedPermissionsByRole(roleId));
