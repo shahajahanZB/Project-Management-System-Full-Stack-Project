@@ -54,7 +54,7 @@ public class UserController {
         return ResponseEntity.ok(authService.assignRoles(req.getUserIds(), req.getRoleId()));
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+    @PreAuthorize("hasAuthority('USER_VIEW_ALL')")
     @GetMapping("/users")
     public ResponseEntity<List<UserWithRolesDTO>> getAllUsersWithRoles() {
         return ResponseEntity.ok(authService.getAllUsersWithRoles());

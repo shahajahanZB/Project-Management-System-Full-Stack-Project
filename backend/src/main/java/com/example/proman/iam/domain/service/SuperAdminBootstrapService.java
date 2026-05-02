@@ -28,6 +28,7 @@ public class SuperAdminBootstrapService implements ApplicationRunner {
             "USER_CREATE",
             "USER_UPDATE",
             "USER_DELETE",
+            "USER_VIEW_ALL",
             "ROLE_MANAGE"
     );
 
