@@ -1,5 +1,6 @@
 package com.example.proman.issue.domain.Dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.time.Instant;
@@ -9,13 +10,18 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CommentDTO {
+public class IssueCommentDTO {
 
     private Long id;
 
     private Long userId;
 
+    @NotBlank(message = "Comment content is required")
     private String content;
 
     private Instant createdAt;
+
+    private Instant updatedAt;
+
+    private boolean deleted;
 }

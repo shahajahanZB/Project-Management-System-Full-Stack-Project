@@ -1,4 +1,5 @@
 package com.example.proman.issue.domain.Entity;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -7,17 +8,21 @@ import lombok.Setter;
 import java.time.Instant;
 
 @Entity
-@Table(name = "comments")
+@Table(name = "attachments")
 @Getter
 @Setter
 @NoArgsConstructor
-public class CommentEntity {
+public class IssueAttachmentEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 2000)
-    private String comment;
+    @Column(nullable = false, length = 1024)
+    private String filePath;
+
+    @Column(length = 255)
+    private String fileName;
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -29,4 +34,8 @@ public class CommentEntity {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = this.createdAt == null ? Instant.now() : this.createdAt;
+    }
 }
