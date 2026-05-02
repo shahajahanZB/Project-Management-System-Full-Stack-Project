@@ -8,5 +8,7 @@ import java.util.List;
 public interface UserStoryAttachmentRepository extends JpaRepository<UserStoryAttachmentEntity, Long> {
     List<UserStoryAttachmentEntity> findAllByUserStory_IdOrderByCreatedAtDesc(Long userStoryId);
 
+    java.util.Optional<UserStoryAttachmentEntity> findByIdAndUserStory_Id(Long id, Long userStoryId);
+
     long countByUserStory_Id(Long userStoryId);
 }

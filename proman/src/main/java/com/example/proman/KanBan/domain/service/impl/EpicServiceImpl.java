@@ -12,6 +12,7 @@ import com.example.proman.KanBan.domain.repository.UserStoryRepository;
 import com.example.proman.KanBan.domain.service.EpicService;
 import com.example.proman.iam.domain.entity.UserEntity;
 import com.example.proman.iam.domain.entity.UserPrincipal;
+import com.example.proman.iam.domain.dto.UserRoleResponseDTO;
 import com.example.proman.iam.domain.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.security.access.AccessDeniedException;
@@ -78,6 +79,21 @@ public class EpicServiceImpl implements EpicService {
     public EpicResponseDTO getEpicById(Long epicId) {
         EpicEntity epic = getAccessibleEpic(epicId);
         return mapEpic(epic);
+    }
+
+    @Override
+    @Transactional
+    public List<UserRoleResponseDTO> getAssignableUsers(Long epicId) {
+        EpicEntity epic = getAccessibleEpic(epicId);
+        Set<Long> participantIds = getProjectParticipantIds(epic.getProject().getId());
+        if (participantIds.isEmpty()) {
+            return List.of();
+        }
+
+        return userRepository.findAllById(participantIds)
+                .stream()
+                .map(user -> new UserRoleResponseDTO(user.getId(), user.getUsername(), user.getEmail()))
+                .toList();
     }
 
     @Override

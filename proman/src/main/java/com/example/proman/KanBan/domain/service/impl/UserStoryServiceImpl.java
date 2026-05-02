@@ -12,11 +12,14 @@ import com.example.proman.KanBan.domain.dto.UserStoryActivityResponseDTO;
 import com.example.proman.KanBan.domain.dto.UserStoryAttachmentCreateRequestDTO;
 import com.example.proman.KanBan.domain.dto.UserStoryAttachmentResponseDTO;
 import com.example.proman.KanBan.domain.dto.UserStoryCommentCreateRequestDTO;
+import com.example.proman.KanBan.domain.dto.UserStoryCommentUpdateRequestDTO;
 import com.example.proman.KanBan.domain.dto.UserStoryCommentResponseDTO;
 import com.example.proman.KanBan.domain.dto.UserStoryCreateRequestDTO;
 import com.example.proman.KanBan.domain.dto.UserStoryResponseDTO;
 import com.example.proman.KanBan.domain.dto.UserStoryStatusUpdateRequestDTO;
+import com.example.proman.KanBan.domain.dto.UserStoryTimingUpdateRequestDTO;
 import com.example.proman.KanBan.domain.dto.UserStoryTagRequestDTO;
+import com.example.proman.KanBan.domain.dto.UserStoryUpdateRequestDTO;
 import com.example.proman.KanBan.domain.dto.UserStoryUsersRequestDTO;
 import com.example.proman.KanBan.domain.repository.EpicRepository;
 import com.example.proman.KanBan.domain.repository.ProjectMembershipRepository;
@@ -29,20 +32,29 @@ import com.example.proman.KanBan.domain.repository.UserStoryStatusRepository;
 import com.example.proman.KanBan.domain.repository.UserStoryTagRepository;
 import com.example.proman.KanBan.domain.service.UserStoryService;
 import com.example.proman.KanBan.domain.Entity.enums.EpicStatus;
+import com.example.proman.config.CloudinaryConfig;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
+import com.example.proman.iam.domain.dto.UserRoleResponseDTO;
 import com.example.proman.iam.domain.entity.UserEntity;
 import com.example.proman.iam.domain.entity.UserPrincipal;
 import com.example.proman.iam.domain.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Service("userStoryService")
@@ -59,6 +71,8 @@ public class UserStoryServiceImpl implements UserStoryService {
     private final ProjectMembershipRepository projectMembershipRepository;
     private final EpicRepository epicRepository;
     private final UserRepository userRepository;
+    private final Cloudinary cloudinary;
+    private final CloudinaryConfig cloudinaryConfig;
 
     @Override
     @Transactional
@@ -102,8 +116,84 @@ public class UserStoryServiceImpl implements UserStoryService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<UserRoleResponseDTO> getAssignableUsersByProject(Long projectId) {
+        ProjectEntity project = getAccessibleProject(projectId);
+
+        Set<Long> participantIds = projectMembershipRepository.findAllByProject_Id(project.getId())
+                .stream()
+                .map(membership -> membership.getUser().getId())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (project.getOwner() != null) {
+            participantIds.add(project.getOwner().getId());
+        }
+
+        return userRepository.findAllById(participantIds)
+                .stream()
+                .map(user -> new UserRoleResponseDTO(user.getId(), user.getUsername(), user.getEmail()))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public UserStoryResponseDTO getUserStoryById(Long storyId) {
         return mapStory(getAccessibleStory(storyId));
+    }
+
+    @Override
+    @Transactional
+    public UserStoryResponseDTO updateUserStory(Long storyId, UserStoryUpdateRequestDTO request) {
+        UserStoryEntity story = getAccessibleStory(storyId);
+        EpicEntity oldEpic = story.getEpic();
+
+        boolean titleChanged = false;
+        boolean descriptionChanged = false;
+        boolean epicChanged = false;
+
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            String normalizedTitle = request.getTitle().trim();
+            if (!normalizedTitle.equals(story.getTitle())) {
+                story.setTitle(normalizedTitle);
+                titleChanged = true;
+            }
+        }
+
+        if (request.getDescription() != null) {
+            String normalizedDescription = request.getDescription().trim();
+            if (!normalizedDescription.equals(story.getDescription())) {
+                story.setDescription(normalizedDescription);
+                descriptionChanged = true;
+            }
+        }
+
+        if (request.getEpicId() != null) {
+            EpicEntity newEpic = resolveEpic(request.getEpicId(), story.getProject());
+            Long oldEpicId = oldEpic == null ? null : oldEpic.getId();
+            Long newEpicId = newEpic == null ? null : newEpic.getId();
+            if (!java.util.Objects.equals(oldEpicId, newEpicId)) {
+                story.setEpic(newEpic);
+                epicChanged = true;
+            }
+        }
+
+        story = userStoryRepository.save(story);
+
+        if (titleChanged || descriptionChanged || epicChanged) {
+            StringBuilder activity = new StringBuilder("User story updated");
+            if (titleChanged) {
+                activity.append(": title");
+            }
+            if (descriptionChanged) {
+                activity.append(titleChanged ? ", description" : ": description");
+            }
+            if (epicChanged) {
+                activity.append(titleChanged || descriptionChanged ? ", epic" : ": epic");
+            }
+            recordActivity(story, activity.toString());
+            syncEpicLifecycle(oldEpic);
+            syncEpicLifecycle(story.getEpic());
+        }
+
+        return mapStory(story);
     }
 
     @Override
@@ -115,6 +205,16 @@ public class UserStoryServiceImpl implements UserStoryService {
         story = userStoryRepository.save(story);
         recordActivity(story, "Status changed to " + status.getName());
         syncEpicLifecycle(story.getEpic());
+        return mapStory(story);
+    }
+
+    @Override
+    @Transactional
+    public UserStoryResponseDTO updateTimings(Long storyId, UserStoryTimingUpdateRequestDTO request) {
+        UserStoryEntity story = getAccessibleStory(storyId);
+        story.setEndDate(request.getEndDate());
+        story = userStoryRepository.save(story);
+        recordActivity(story, "End date set to " + request.getEndDate());
         return mapStory(story);
     }
 
@@ -206,15 +306,23 @@ public class UserStoryServiceImpl implements UserStoryService {
             throw new IllegalStateException("Tag already assigned to this user story");
         }
 
+        AtomicBoolean createdNewTag = new AtomicBoolean(false);
         UserStoryTagEntity tag = userStoryTagRepository.findByNameIgnoreCase(name)
                 .orElseGet(() -> {
                     UserStoryTagEntity newTag = new UserStoryTagEntity();
                     newTag.setName(name);
-                    return userStoryTagRepository.save(newTag);
+                    try {
+                        createdNewTag.set(true);
+                        return userStoryTagRepository.save(newTag);
+                    } catch (DataIntegrityViolationException ex) {
+                        createdNewTag.set(false);
+                        return userStoryTagRepository.findByNameIgnoreCase(name)
+                                .orElseThrow(() -> ex);
+                    }
                 });
         story.getTags().add(tag);
         story = userStoryRepository.save(story);
-        recordActivity(story, "Tag added: " + name);
+        recordActivity(story, createdNewTag.get() ? "Tag created and assigned: " + name : "Tag added: " + name);
         return mapStory(story);
     }
 
@@ -251,6 +359,41 @@ public class UserStoryServiceImpl implements UserStoryService {
     }
 
     @Override
+    @Transactional
+    public UserStoryCommentResponseDTO updateComment(Long storyId, Long commentId, UserStoryCommentUpdateRequestDTO request) {
+        UserStoryEntity story = getAccessibleStory(storyId);
+        UserStoryCommentEntity comment = commentRepository.findByIdAndUserStory_Id(commentId, storyId)
+                .orElseThrow(() -> new EntityNotFoundException("Comment not found"));
+
+        UserEntity currentUser = getCurrentUser();
+        if (!canManageComment(comment, currentUser.getId())) {
+            throw new AccessDeniedException("You can only update your own comment");
+        }
+
+        String updatedComment = request.getComment().trim();
+        comment.setComment(updatedComment);
+        comment = commentRepository.save(comment);
+        recordActivity(story, "Comment updated");
+        return mapComment(comment);
+    }
+
+    @Override
+    @Transactional
+    public void deleteComment(Long storyId, Long commentId) {
+        UserStoryEntity story = getAccessibleStory(storyId);
+        UserStoryCommentEntity comment = commentRepository.findByIdAndUserStory_Id(commentId, storyId)
+                .orElseThrow(() -> new EntityNotFoundException("Comment not found"));
+
+        UserEntity currentUser = getCurrentUser();
+        if (!canManageComment(comment, currentUser.getId())) {
+            throw new AccessDeniedException("You can only delete your own comment");
+        }
+
+        commentRepository.delete(comment);
+        recordActivity(story, "Comment deleted");
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<UserStoryCommentResponseDTO> getComments(Long storyId) {
         getAccessibleStory(storyId);
@@ -262,18 +405,59 @@ public class UserStoryServiceImpl implements UserStoryService {
 
     @Override
     @Transactional
-    public UserStoryAttachmentResponseDTO addAttachment(Long storyId, UserStoryAttachmentCreateRequestDTO request) {
+    public UserStoryAttachmentResponseDTO addAttachment(Long storyId, MultipartFile file, UserStoryAttachmentCreateRequestDTO request) {
         UserStoryEntity story = getAccessibleStory(storyId);
         UserEntity currentUser = getCurrentUser();
+        cloudinaryConfig.validateFileSize(file);
 
-        UserStoryAttachmentEntity attachment = new UserStoryAttachmentEntity();
-        attachment.setUserStory(story);
-        attachment.setUserId(currentUser.getId());
-        attachment.setFilePath(request.getFilePath().trim());
-        attachment = attachmentRepository.save(attachment);
+        Map<?, ?> uploadResult;
+        String folder = cloudinaryConfig.normalizeFolder("proman/user-stories/" + story.getId() + "/attachments");
+        String publicId = null;
+        try {
+            uploadResult = cloudinary.uploader().upload(
+                    file.getBytes(),
+                    ObjectUtils.asMap(
+                            "resource_type", "auto",
+                            "folder", folder
+                    )
+            );
+        } catch (IOException ex) {
+            throw new IllegalStateException("Unable to read attachment file", ex);
+        } catch (RuntimeException ex) {
+            throw new IllegalStateException("Unable to upload attachment", ex);
+        }
 
-        recordActivity(story, "Attachment added");
-        return mapAttachment(attachment);
+        Object fileUrlValue = uploadResult.get("secure_url");
+        Object publicIdValue = uploadResult.get("public_id");
+        String fileUrl = fileUrlValue == null ? null : String.valueOf(fileUrlValue);
+        publicId = publicIdValue == null ? null : String.valueOf(publicIdValue);
+        if (fileUrl == null || "null".equals(fileUrl) || publicId == null || "null".equals(publicId)) {
+            if (publicId != null && !"null".equals(publicId)) {
+                deleteCloudinaryAsset(publicId);
+            }
+            throw new IllegalStateException("Attachment upload failed");
+        }
+
+        try {
+            UserStoryAttachmentEntity attachment = new UserStoryAttachmentEntity();
+            attachment.setUserStory(story);
+            attachment.setUserId(currentUser.getId());
+            attachment.setDescription(request.getDescription().trim());
+            attachment.setFileUrl(fileUrl);
+            attachment.setCloudinaryPublicId(publicId);
+            attachment.setOriginalFileName(normalizeFileName(file.getOriginalFilename()));
+            attachment.setContentType(normalizeContentType(file.getContentType()));
+            attachment.setFileSizeBytes(file.getSize());
+
+            attachment = attachmentRepository.saveAndFlush(attachment);
+            recordActivity(story, "Attachment added: " + attachment.getDescription());
+            return mapAttachment(attachment);
+        } catch (RuntimeException ex) {
+            if (publicId != null && !"null".equals(publicId)) {
+                deleteCloudinaryAsset(publicId);
+            }
+            throw ex;
+        }
     }
 
     @Override
@@ -284,6 +468,19 @@ public class UserStoryServiceImpl implements UserStoryService {
                 .stream()
                 .map(this::mapAttachment)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void deleteAttachment(Long storyId, Long attachmentId) {
+        UserStoryEntity story = getAccessibleStory(storyId);
+        UserStoryAttachmentEntity attachment = attachmentRepository.findByIdAndUserStory_Id(attachmentId, storyId)
+                .orElseThrow(() -> new EntityNotFoundException("Attachment not found"));
+
+        attachmentRepository.delete(attachment);
+        attachmentRepository.flush();
+        deleteCloudinaryAsset(attachment.getCloudinaryPublicId());
+        recordActivity(story, "Attachment deleted: " + attachment.getDescription());
     }
 
     @Override
@@ -417,7 +614,7 @@ public class UserStoryServiceImpl implements UserStoryService {
         entry.setUserStory(story);
         entry.setUserId(getCurrentUser().getId());
         entry.setActivity(activity);
-        activityRepository.save(entry);
+        activityRepository.saveAndFlush(entry);
     }
 
     private UserStoryResponseDTO mapStory(UserStoryEntity story) {
@@ -428,6 +625,7 @@ public class UserStoryServiceImpl implements UserStoryService {
         dto.setStatusId(story.getStatus().getId());
         dto.setStatusName(story.getStatus().getName());
         dto.setStatusClosed(story.getStatus().isClosed());
+        dto.setEndDate(story.getEndDate());
         dto.setTitle(story.getTitle());
         dto.setDescription(story.getDescription());
         dto.setAssignedUserIds(story.getAssignedUsers().stream().map(UserEntity::getId).collect(Collectors.toSet()));
@@ -446,7 +644,12 @@ public class UserStoryServiceImpl implements UserStoryService {
         dto.setUserId(comment.getUserId());
         dto.setComment(comment.getComment());
         dto.setCreatedAt(comment.getCreatedAt());
+        dto.setModifiedAt(comment.getModifiedAt());
         return dto;
+    }
+
+    private boolean canManageComment(UserStoryCommentEntity comment, Long currentUserId) {
+        return comment.getUserId() != null && comment.getUserId().equals(currentUserId);
     }
 
     private UserStoryAttachmentResponseDTO mapAttachment(UserStoryAttachmentEntity attachment) {
@@ -454,7 +657,12 @@ public class UserStoryServiceImpl implements UserStoryService {
         dto.setId(attachment.getId());
         dto.setUserStoryId(attachment.getUserStory().getId());
         dto.setUserId(attachment.getUserId());
-        dto.setFilePath(attachment.getFilePath());
+        dto.setDescription(attachment.getDescription());
+        dto.setFileUrl(attachment.getFileUrl());
+        dto.setCloudinaryPublicId(attachment.getCloudinaryPublicId());
+        dto.setOriginalFileName(attachment.getOriginalFileName());
+        dto.setContentType(attachment.getContentType());
+        dto.setFileSizeBytes(attachment.getFileSizeBytes());
         dto.setCreatedAt(attachment.getCreatedAt());
         return dto;
     }
@@ -474,6 +682,33 @@ public class UserStoryServiceImpl implements UserStoryService {
             throw new IllegalArgumentException("Tag name cannot be empty");
         }
         return name.trim();
+    }
+
+    private String normalizeFileName(String originalFileName) {
+        if (originalFileName == null || originalFileName.isBlank()) {
+            return "attachment";
+        }
+        return originalFileName.trim();
+    }
+
+    private String normalizeContentType(String contentType) {
+        if (contentType == null || contentType.isBlank()) {
+            return "application/octet-stream";
+        }
+        return contentType.trim();
+    }
+
+    private void deleteCloudinaryAsset(String publicId) {
+        try {
+            cloudinary.uploader().destroy(
+                    publicId,
+                    ObjectUtils.asMap("resource_type", "auto")
+            );
+        } catch (IOException ignored) {
+            // Best effort cleanup. If Cloudinary cleanup fails, keep the DB operation outcome.
+        } catch (RuntimeException ignored) {
+            // Best effort cleanup. The database transaction will still roll back.
+        }
     }
 
     private UserEntity getCurrentUser() {

@@ -4,6 +4,7 @@ import com.example.proman.KanBan.domain.dto.EpicAssigneesRequestDTO;
 import com.example.proman.KanBan.domain.dto.EpicCreateRequestDTO;
 import com.example.proman.KanBan.domain.dto.EpicResponseDTO;
 import com.example.proman.KanBan.domain.service.EpicService;
+import com.example.proman.iam.domain.dto.UserRoleResponseDTO;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -43,6 +44,12 @@ public class EpicController {
     @PreAuthorize("hasAuthority('EPIC_VIEW')")
     public ResponseEntity<EpicResponseDTO> getEpicById(@PathVariable Long epicId) {
         return ResponseEntity.ok(epicService.getEpicById(epicId));
+    }
+
+    @GetMapping("/{epicId}/assignable-users")
+    @PreAuthorize("hasAuthority('EPIC_ASSIGN_USERS')")
+    public ResponseEntity<List<UserRoleResponseDTO>> getAssignableUsers(@PathVariable Long epicId) {
+        return ResponseEntity.ok(epicService.getAssignableUsers(epicId));
     }
 
     @PostMapping("/{epicId}/assignees")

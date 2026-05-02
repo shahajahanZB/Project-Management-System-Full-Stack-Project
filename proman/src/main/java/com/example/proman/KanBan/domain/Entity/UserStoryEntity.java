@@ -61,6 +61,9 @@ public class UserStoryEntity {
     @Column(name = "modified_date", nullable = false)
     private Instant modifiedDate;
 
+    @Column(name = "end_date")
+    private Instant endDate;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "user_story_assigned_users",

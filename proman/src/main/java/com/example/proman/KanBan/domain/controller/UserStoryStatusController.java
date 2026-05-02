@@ -25,19 +25,19 @@ public class UserStoryStatusController {
     private final UserStoryStatusService userStoryStatusService;
 
     @PostMapping
-    @PreAuthorize("hasAuthority('USER_STORY_STATUS_MANAGE')")
+    @PreAuthorize("hasAuthority('STORY_STATUS_MANAGE')")
     public ResponseEntity<UserStoryStatusResponseDTO> createStatus(@Valid @RequestBody UserStoryStatusCreateRequestDTO request) {
         return ResponseEntity.ok(userStoryStatusService.createStatus(request));
     }
 
     @GetMapping("/project/{projectId}")
-    @PreAuthorize("hasAuthority('USER_STORY_STATUS_VIEW')")
+    @PreAuthorize("hasAuthority('STORY_STATUS_VIEW')")
     public ResponseEntity<List<UserStoryStatusResponseDTO>> getStatusesByProject(@PathVariable Long projectId) {
         return ResponseEntity.ok(userStoryStatusService.getStatusesByProject(projectId));
     }
 
     @DeleteMapping("/{statusId}")
-    @PreAuthorize("hasAuthority('USER_STORY_STATUS_MANAGE')")
+    @PreAuthorize("hasAuthority('STORY_STATUS_MANAGE')")
     public ResponseEntity<Void> deleteStatus(@PathVariable Long statusId) {
         userStoryStatusService.deleteStatus(statusId);
         return ResponseEntity.noContent().build();

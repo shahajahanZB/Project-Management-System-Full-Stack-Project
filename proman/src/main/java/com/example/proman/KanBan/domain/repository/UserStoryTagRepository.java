@@ -9,4 +9,6 @@ public interface UserStoryTagRepository extends JpaRepository<UserStoryTagEntity
     Optional<UserStoryTagEntity> findByNameIgnoreCase(String name);
 
     boolean existsByNameIgnoreCase(String name);
+
+    java.util.List<UserStoryTagEntity> findAllByOrderByNameAsc();
 }

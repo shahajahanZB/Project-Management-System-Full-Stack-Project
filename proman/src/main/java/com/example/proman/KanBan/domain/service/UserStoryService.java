@@ -1,6 +1,8 @@
 package com.example.proman.KanBan.domain.service;
 
 import com.example.proman.KanBan.domain.dto.*;
+import com.example.proman.iam.domain.dto.UserRoleResponseDTO;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -12,9 +14,15 @@ public interface UserStoryService {
 
     List<UserStoryResponseDTO> getUserStoriesByEpic(Long epicId);
 
+    List<UserRoleResponseDTO> getAssignableUsersByProject(Long projectId);
+
     UserStoryResponseDTO getUserStoryById(Long storyId);
 
+    UserStoryResponseDTO updateUserStory(Long storyId, UserStoryUpdateRequestDTO request);
+
     UserStoryResponseDTO updateStatus(Long storyId, UserStoryStatusUpdateRequestDTO request);
+
+    UserStoryResponseDTO updateTimings(Long storyId, UserStoryTimingUpdateRequestDTO request);
 
     UserStoryResponseDTO assignUsers(Long storyId, UserStoryUsersRequestDTO request);
 
@@ -30,11 +38,17 @@ public interface UserStoryService {
 
     UserStoryCommentResponseDTO addComment(Long storyId, UserStoryCommentCreateRequestDTO request);
 
+    UserStoryCommentResponseDTO updateComment(Long storyId, Long commentId, UserStoryCommentUpdateRequestDTO request);
+
+    void deleteComment(Long storyId, Long commentId);
+
     List<UserStoryCommentResponseDTO> getComments(Long storyId);
 
-    UserStoryAttachmentResponseDTO addAttachment(Long storyId, UserStoryAttachmentCreateRequestDTO request);
+    UserStoryAttachmentResponseDTO addAttachment(Long storyId, MultipartFile file, UserStoryAttachmentCreateRequestDTO request);
 
     List<UserStoryAttachmentResponseDTO> getAttachments(Long storyId);
+
+    void deleteAttachment(Long storyId, Long attachmentId);
 
     List<UserStoryActivityResponseDTO> getActivities(Long storyId);
 

@@ -29,8 +29,23 @@ public class UserStoryAttachmentEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 1024)
-    private String filePath;
+    @Column(name = "file_url", nullable = false, length = 2048)
+    private String fileUrl;
+
+    @Column(name = "cloudinary_public_id", nullable = false, length = 255)
+    private String cloudinaryPublicId;
+
+    @Column(name = "original_file_name", nullable = false, length = 255)
+    private String originalFileName;
+
+    @Column(name = "content_type", length = 128)
+    private String contentType;
+
+    @Column(name = "file_size_bytes", nullable = false)
+    private Long fileSizeBytes;
+
+    @Column(nullable = false, columnDefinition = "text")
+    private String description;
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;

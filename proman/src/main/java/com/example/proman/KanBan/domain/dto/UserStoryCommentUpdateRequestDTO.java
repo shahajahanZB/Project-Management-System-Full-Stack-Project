@@ -6,8 +6,8 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class UserStoryAttachmentCreateRequestDTO {
+public class UserStoryCommentUpdateRequestDTO {
 
     @NotBlank
-    private String description;
+    private String comment;
 }

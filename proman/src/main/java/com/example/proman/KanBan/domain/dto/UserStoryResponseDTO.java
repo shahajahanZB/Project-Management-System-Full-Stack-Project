@@ -15,6 +15,7 @@ public class UserStoryResponseDTO {
     private Long statusId;
     private String statusName;
     private Boolean statusClosed;
+    private java.time.Instant endDate;
     private String title;
     private String description;
     private Set<Long> assignedUserIds;

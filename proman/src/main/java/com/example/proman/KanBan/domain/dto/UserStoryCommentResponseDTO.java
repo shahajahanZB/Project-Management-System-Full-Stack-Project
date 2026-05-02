@@ -14,4 +14,5 @@ public class UserStoryCommentResponseDTO {
     private Long userId;
     private String comment;
     private Instant createdAt;
+    private Instant modifiedAt;
 }
