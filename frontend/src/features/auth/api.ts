@@ -118,13 +118,13 @@ export async function updateUser(
 // ============================================================================
 
 export async function createRole(payload: CreateRolePayload) {
-  const response = await apiClient.post<Role>("/v1/iam/roles/create", payload);
-  return response.data;
+  const response = await apiClient.post<any>("/v1/iam/roles/create", payload);
+  return normalizeRole(response.data);
 }
 
 export async function getAllRoles() {
-  const response = await apiClient.get<Role[]>("/v1/iam/roles");
-  return response.data;
+  const response = await apiClient.get<any[]>("/v1/iam/roles");
+  return response.data.map(normalizeRole);
 }
 
 export async function deleteRole(roleId: number) {
@@ -135,8 +135,23 @@ export async function deleteRole(roleId: number) {
 }
 
 export async function getRoleWithPermissions(roleId: number) {
-  const response = await apiClient.get<Role>(
-    `/v1/iam/roles/${roleId}/permissions`,
+  const response = await apiClient.get<any>(
+    `/v1/iam/roles/${roleId}/assigned-permissions`,
+  );
+  const data = response.data;
+  if (Array.isArray(data)) {
+    return {
+      id: roleId,
+      name: String(roleId),
+      permissions: data,
+    } as Role;
+  }
+  return normalizeRole(data);
+}
+
+export async function getUnassignedPermissionsByRole(roleId: number) {
+  const response = await apiClient.get<PermissionsGrouped>(
+    `/v1/iam/roles/${roleId}/unassigned-permissions`,
   );
   return response.data;
 }
@@ -149,18 +164,22 @@ export async function assignPermissionsToRole(
     "/v1/iam/roles/assign-permissions",
     payload,
     {
-      params: { roleid: roleId },
+      params: { roleId },
     },
   );
   return response.data;
 }
 
 export async function deassignPermissionsFromRole(
+  roleId: number,
   payload: DeassignPermissionsPayload,
 ) {
-  const response = await apiClient.post<{ message: string }>(
+  const response = await apiClient.delete<{ message: string }>(
     "/v1/iam/roles/deassign-permissions",
-    payload,
+    {
+      params: { roleId },
+      data: payload,
+    },
   );
   return response.data;
 }
@@ -182,4 +201,13 @@ export async function createPermissionsBulk(payload: CreatePermissionsPayload) {
     payload,
   );
   return response.data;
+}
+
+function normalizeRole(role: any): Role {
+  return {
+    ...role,
+    id: role?.id ?? role?.roleId,
+    name: role?.name ?? role?.roleName,
+    permissions: role?.permissions ?? [],
+  };
 }

@@ -13,6 +13,7 @@ import {
   getAllUsers,
   getCurrentUser,
   getRoleWithPermissions,
+  getUnassignedPermissionsByRole,
   getUsersByRole,
   getUsersWithNoRoles,
   login,
@@ -118,6 +119,17 @@ export function useGetRoleWithPermissions(roleId: number, enabled = true) {
   });
 }
 
+export function useGetUnassignedPermissionsByRole(
+  roleId: number,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ["role", roleId, "unassigned-permissions"],
+    queryFn: () => getUnassignedPermissionsByRole(roleId),
+    enabled,
+  });
+}
+
 export function useAssignPermissionsToRoleMutation() {
   return useMutation({
     mutationFn: ({
@@ -130,7 +142,14 @@ export function useAssignPermissionsToRoleMutation() {
 }
 
 export function useDeassignPermissionsFromRoleMutation() {
-  return useMutation({ mutationFn: deassignPermissionsFromRole });
+  return useMutation({
+    mutationFn: ({
+      roleId,
+      payload,
+    }: Parameters<typeof deassignPermissionsFromRole> extends [infer A, infer B]
+      ? { roleId: A; payload: B }
+      : never) => deassignPermissionsFromRole(roleId, payload),
+  });
 }
 
 export function useGetAllPermissions(enabled = true) {
