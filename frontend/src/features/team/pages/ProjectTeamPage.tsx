@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
-import { useGetAllUsers } from "@/features/auth/hooks";
+import { useGetAllUsers, useGetCurrentUser } from "@/features/auth/hooks";
 import {
   useAddProjectMembers,
   useProject,
@@ -14,6 +14,7 @@ type ProjectMember = {
   userId: number;
   username: string;
   email: string;
+  isOwner?: boolean;
 };
 
 function toMember(item: any): ProjectMember {
@@ -31,8 +32,14 @@ export function ProjectTeamPage() {
   const projectQuery = useProject(projectId);
   const membersQuery = useProjectMembers(projectId);
   const usersQuery = useGetAllUsers();
+  const currentUserQuery = useGetCurrentUser();
   const addMembers = useAddProjectMembers();
   const removeMembers = useRemoveProjectMembers();
+
+  const usersErrorStatus =
+    (usersQuery.error as any)?.response?.status ??
+    (usersQuery.error as any)?.status;
+  const isUsersForbidden = usersErrorStatus === 403;
 
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<number[]>([]);
@@ -42,7 +49,37 @@ export function ProjectTeamPage() {
     [membersQuery.data],
   );
 
-  const memberIds = useMemo(() => members.map((m) => m.userId), [members]);
+  const ownerFallbackMember = useMemo(() => {
+    const projectOwner = projectQuery.data?.ownerName?.trim().toLowerCase();
+    const currentUsername =
+      currentUserQuery.data?.username?.trim().toLowerCase() ?? "";
+    const currentUserId = currentUserQuery.data?.id;
+
+    if (!projectOwner || !currentUsername || projectOwner !== currentUsername) {
+      return null;
+    }
+
+    if (!currentUserId || members.some((m) => m.userId === currentUserId)) {
+      return null;
+    }
+
+    return {
+      userId: currentUserId,
+      username: currentUserQuery.data?.username ?? "Owner",
+      email: currentUserQuery.data?.email ?? "",
+      isOwner: true,
+    } as ProjectMember;
+  }, [projectQuery.data?.ownerName, currentUserQuery.data, members]);
+
+  const displayMembers = useMemo(
+    () => (ownerFallbackMember ? [ownerFallbackMember, ...members] : members),
+    [ownerFallbackMember, members],
+  );
+
+  const memberIds = useMemo(
+    () => displayMembers.map((m) => m.userId),
+    [displayMembers],
+  );
 
   const availableUsers = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -106,29 +143,36 @@ export function ProjectTeamPage() {
 
         {membersQuery.isLoading ? (
           <p className="text-sm text-slate-500">Loading members...</p>
-        ) : members.length === 0 ? (
+        ) : displayMembers.length === 0 ? (
           <p className="text-sm text-slate-500">No members in this project yet.</p>
         ) : (
           <div className="space-y-2">
-            {members.map((member) => (
+            {displayMembers.map((member) => (
               <div
                 key={member.userId}
                 className="flex items-center justify-between gap-3 rounded px-3 py-2 hover:bg-slate-50"
               >
                 <div>
-                  <div className="text-sm font-medium text-slate-900">
+                  <div className="text-sm font-medium text-slate-900 flex items-center gap-2">
                     {member.username}
+                    {member.isOwner ? (
+                      <span className="rounded bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
+                        Owner
+                      </span>
+                    ) : null}
                   </div>
                   <div className="text-xs text-slate-500">{member.email}</div>
                 </div>
-                <Button
-                  variant="secondary"
-                  onClick={() => handleRemoveMember(member.userId)}
-                  disabled={removeMembers.isPending}
-                  className="border-red-200 text-red-600 hover:bg-red-50"
-                >
-                  Remove
-                </Button>
+                {member.isOwner ? null : (
+                  <Button
+                    variant="secondary"
+                    onClick={() => handleRemoveMember(member.userId)}
+                    disabled={removeMembers.isPending}
+                    className="border-red-200 text-red-600 hover:bg-red-50"
+                  >
+                    Remove
+                  </Button>
+                )}
               </div>
             ))}
           </div>
@@ -150,6 +194,12 @@ export function ProjectTeamPage() {
         <div className="mt-3 max-h-64 overflow-auto rounded border bg-white p-2">
           {usersQuery.isLoading ? (
             <p className="text-sm text-slate-500">Loading users...</p>
+          ) : isUsersForbidden ? (
+            <p className="text-sm text-red-600">
+              You do not have permission to list all users (403). Ask admin to
+              grant access, or use a project-scoped endpoint like
+              /v1/projects/{'{'}projectId{'}'}/assignable-users.
+            </p>
           ) : usersQuery.isError ? (
             <p className="text-sm text-red-600">Failed to load users.</p>
           ) : !usersQuery.data || usersQuery.data.length === 0 ? (
