@@ -71,6 +71,7 @@ public class EpicServiceImpl implements EpicService {
         getAccessibleProject(projectId);
         return epicRepository.findAllByProject_IdOrderByIdDesc(projectId)
                 .stream()
+                .map(this::reconcileEpicLifecycle)
                 .map(this::mapEpic)
                 .toList();
     }
@@ -78,6 +79,7 @@ public class EpicServiceImpl implements EpicService {
     @Override
     public EpicResponseDTO getEpicById(Long epicId) {
         EpicEntity epic = getAccessibleEpic(epicId);
+        reconcileEpicLifecycle(epic);
         return mapEpic(epic);
     }
 
@@ -196,6 +198,26 @@ public class EpicServiceImpl implements EpicService {
                 .map(UserEntity::getId)
                 .collect(Collectors.toSet()));
         return dto;
+    }
+
+    private EpicEntity reconcileEpicLifecycle(EpicEntity epic) {
+        long totalStories = userStoryRepository.countByEpic_Id(epic.getId());
+        com.example.proman.KanBan.domain.Entity.enums.EpicStatus expectedStatus;
+        if (totalStories == 0) {
+            expectedStatus = com.example.proman.KanBan.domain.Entity.enums.EpicStatus.NEW;
+        } else {
+            long closedStories = userStoryRepository.countByEpic_IdAndStatus_ClosedTrue(epic.getId());
+            expectedStatus = closedStories == totalStories
+                    ? com.example.proman.KanBan.domain.Entity.enums.EpicStatus.CLOSED
+                    : com.example.proman.KanBan.domain.Entity.enums.EpicStatus.IN_PROGRESS;
+        }
+
+        if (epic.getStatus() != expectedStatus) {
+            epic.setStatus(expectedStatus);
+            epic = epicRepository.save(epic);
+        }
+
+        return epic;
     }
 
     private UserEntity getCurrentUser() {
