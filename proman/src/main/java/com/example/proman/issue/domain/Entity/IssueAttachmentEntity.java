@@ -21,6 +21,9 @@ public class IssueAttachmentEntity {
     @Column(nullable = false, length = 1024)
     private String filePath;
 
+    @Column(length = 255)
+    private String fileName;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -31,4 +34,8 @@ public class IssueAttachmentEntity {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = this.createdAt == null ? Instant.now() : this.createdAt;
+    }
 }

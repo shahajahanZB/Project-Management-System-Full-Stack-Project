@@ -22,6 +22,14 @@ public class IssueCommentEntity {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(nullable = false)
+    private Instant updatedAt;
+
+    @Column(nullable = false)
+    private boolean deleted = false;
+
+    private Instant deletedAt;
+
     @ManyToOne
     @JoinColumn(name = "issue_id", nullable = false)
     private IssueEntity issue;
@@ -29,4 +37,15 @@ public class IssueCommentEntity {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @PrePersist
+    protected void onCreate() {
+        Instant now = Instant.now();
+        this.createdAt = this.createdAt == null ? now : this.createdAt;
+        this.updatedAt = this.updatedAt == null ? now : this.updatedAt;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = Instant.now();
+    }
 }

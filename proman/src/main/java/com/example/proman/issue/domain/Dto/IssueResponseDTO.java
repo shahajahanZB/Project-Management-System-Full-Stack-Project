@@ -3,6 +3,7 @@ package com.example.proman.issue.domain.Dto;
 import lombok.*;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
@@ -15,7 +16,9 @@ public class IssueResponseDTO {
 
     private Long id;
 
-    private Long assigneeID;
+    private Long projectId;
+
+    private Long assigneeId;
 
     private String title;
 
@@ -24,6 +27,8 @@ public class IssueResponseDTO {
     private Instant createdAt;
 
     private Instant updatedAt;
+
+    private LocalDate dueDate;
 
     private Boolean isBlocked;
 
@@ -46,4 +51,6 @@ public class IssueResponseDTO {
     private List<IssueActivityDTO> activities;
 
     private Set<IssueTagDTO> tags;
+
+    private Set<IssueWatcherDTO> watchers;
 }

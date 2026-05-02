@@ -6,7 +6,9 @@ import com.example.proman.issue.domain.Repository.*;
 import com.example.proman.issue.domain.Service.IssueActivityService;
 
 import lombok.RequiredArgsConstructor;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -20,10 +22,11 @@ public class IssueActivityServiceImpl implements IssueActivityService {
     private final IssueRepository issueRepository;
 
     @Override
+    @Transactional
     public void logActivity(Long issueId, String action, Long userId) {
 
         IssueEntity issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new RuntimeException("Issue not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Issue not found"));
 
         IssueActivityEntity activity = new IssueActivityEntity();
         activity.setIssue(issue);
@@ -35,9 +38,10 @@ public class IssueActivityServiceImpl implements IssueActivityService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<IssueActivityDTO> getActivities(Long issueId) {
 
-        return activityRepository.findByIssueId(issueId)
+        return activityRepository.findByIssueIdOrderByCreatedAtDesc(issueId)
                 .stream()
                 .map(a -> IssueActivityDTO.builder()
                         .id(a.getId())

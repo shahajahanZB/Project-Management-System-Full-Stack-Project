@@ -9,4 +9,8 @@ public interface IssueAttachmentRepository extends JpaRepository<IssueAttachment
 
     // get attachments of an issue
     List<IssueAttachmentEntity> findByIssueId(Long issueId);
+
+    List<IssueAttachmentEntity> findByIssueIdOrderByCreatedAtDesc(Long issueId);
+
+    long countByIssue_Id(Long issueId);
 }

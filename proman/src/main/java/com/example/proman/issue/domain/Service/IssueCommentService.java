@@ -10,5 +10,7 @@ public interface IssueCommentService {
 
     List<IssueCommentDTO> getCommentsByIssue(Long issueId);
 
+    IssueCommentDTO updateComment(Long commentId, IssueCommentDTO dto);
+
     void deleteComment(Long commentId);
 }

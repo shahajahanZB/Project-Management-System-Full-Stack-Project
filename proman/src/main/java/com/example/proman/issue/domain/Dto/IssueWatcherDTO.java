@@ -1,7 +1,10 @@
 package com.example.proman.issue.domain.Dto;
 
-import jakarta.validation.constraints.NotBlank;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.Instant;
 
@@ -10,14 +13,9 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class IssueAttachmentDTO {
+public class IssueWatcherDTO {
 
     private Long id;
-
-    private String fileName;
-
-    @NotBlank(message = "File URL is required")
-    private String fileUrl;
 
     private Long userId;
 

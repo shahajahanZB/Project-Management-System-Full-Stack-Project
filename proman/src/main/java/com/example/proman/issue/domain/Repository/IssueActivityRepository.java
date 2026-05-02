@@ -9,4 +9,8 @@ public interface IssueActivityRepository extends JpaRepository<IssueActivityEnti
 
     // get activity history of an issue
     List<IssueActivityEntity> findByIssueId(Long issueId);
+
+    List<IssueActivityEntity> findByIssueIdOrderByCreatedAtDesc(Long issueId);
+
+    long countByIssue_Id(Long issueId);
 }

@@ -1,4 +1,5 @@
 package com.example.proman.issue.domain.Entity;
+import com.example.proman.KanBan.domain.Entity.ProjectEntity;
 import com.example.proman.issue.domain.Enums.*;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -6,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 
 @Entity
@@ -18,8 +20,12 @@ public class IssueEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private Long assigneeID;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "project_id", nullable = false)
+    private ProjectEntity project;
+
+    @Column(name = "assignee_id")
+    private Long assigneeId;
 
     @Column(nullable = false, length = 255)
     private String title;
@@ -32,6 +38,9 @@ public class IssueEntity {
 
     @Column(nullable = false)
     private Instant updatedAt;
+
+    @Column(name = "due_date")
+    private LocalDate dueDate;
 
     @Column(nullable = false)
     private Boolean isBlocked;
@@ -56,14 +65,17 @@ public class IssueEntity {
     @Column(name = "created_by", nullable = false)
     private Long createdById;
 
-    @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<IssueCommentEntity> comments = new ArrayList<>();
 
-    @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<IssueAttachmentEntity> attachments = new ArrayList<>();
 
-    @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<IssueActivityEntity> activities = new ArrayList<>();
+
+    @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<IssueWatcherEntity> watchers = new HashSet<>();
 
     @ManyToMany
     @JoinTable(
@@ -73,4 +85,16 @@ public class IssueEntity {
     )
     private Set<IssueTagEntity> tags = new HashSet<>();
 
+    @PrePersist
+    protected void onCreate() {
+        Instant now = Instant.now();
+        this.createdAt = this.createdAt == null ? now : this.createdAt;
+        this.updatedAt = this.updatedAt == null ? now : this.updatedAt;
+        this.isBlocked = this.isBlocked == null ? Boolean.FALSE : this.isBlocked;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = Instant.now();
+    }
 }

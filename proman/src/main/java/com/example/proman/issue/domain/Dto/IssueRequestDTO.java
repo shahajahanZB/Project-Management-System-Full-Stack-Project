@@ -1,8 +1,10 @@
 package com.example.proman.issue.domain.Dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.util.Set;
 
 @Getter
@@ -12,8 +14,11 @@ import java.util.Set;
 @Builder
 public class IssueRequestDTO {
 
-    @NotNull(message = "Assignee ID is required")
-    private Long assigneeID;
+    @NotNull(message = "Project ID is required")
+    private Long projectId;
+
+    @JsonAlias("assigneeID")
+    private Long assigneeId;
 
     @NotBlank(message = "Title is required")
     @Size(max = 255)
@@ -23,7 +28,8 @@ public class IssueRequestDTO {
     @Size(max = 2000)
     private String description;
 
-    @NotNull(message = "Blocked flag is required")
+    private LocalDate dueDate;
+
     private Boolean isBlocked;
 
     // ENUMS (String format for frontend)
@@ -39,9 +45,10 @@ public class IssueRequestDTO {
     @NotBlank(message = "Priority is required")
     private String priority;
 
-    @NotNull(message = "CreatedBy ID is required")
     private Long createdById;
 
     // Relationships (only IDs)
     private Set<Long> tagIds;
+
+    private Set<Long> watcherIds;
 }

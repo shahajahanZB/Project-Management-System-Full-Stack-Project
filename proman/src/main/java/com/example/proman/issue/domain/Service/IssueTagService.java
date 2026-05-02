@@ -7,4 +7,6 @@ import java.util.List;
 public interface IssueTagService {
 
     List<IssueTagDTO> getAllTags();
+
+    IssueTagDTO createTag(IssueTagDTO dto);
 }
