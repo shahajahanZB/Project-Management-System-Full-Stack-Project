@@ -19,6 +19,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -27,7 +28,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -157,13 +160,13 @@ public class IssueController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/attachments")
+    @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAuthority('ISSUE_ATTACHMENT')")
     public ResponseEntity<IssueAttachmentDTO> addAttachment(
             @PathVariable Long id,
-            @Valid @RequestBody IssueAttachmentDTO request
+            @RequestPart("file") MultipartFile file
     ) {
-        return ResponseEntity.ok(issueAttachmentService.addAttachment(id, request));
+        return ResponseEntity.ok(issueAttachmentService.addAttachment(id, file));
     }
 
     @GetMapping("/{id}/attachments")
