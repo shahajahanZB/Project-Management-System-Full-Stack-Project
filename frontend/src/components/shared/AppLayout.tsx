@@ -1,5 +1,4 @@
 import { Outlet, useLocation } from "react-router-dom";
-import { APP_NAME } from "@/lib/constants";
 import GlobalSidebar from "@/components/GlobalSidebar";
 
 export function AppLayout() {
@@ -10,7 +9,6 @@ export function AppLayout() {
     "/forgot-password",
     "/verify-otp",
     "/unauthorized",
-    "/dashboard",
   ];
   const isNoChromeRoute =
     noChromeRoutes.includes(location.pathname) || location.pathname === "/";

@@ -11,8 +11,6 @@ public interface IssueService {
 
     IssueResponseDTO getIssueById(Long id);
 
-    List<IssueResponseDTO> getAllIssues();
-
     List<IssueResponseDTO> getIssuesByProject(Long projectId);
 
     IssueResponseDTO updateIssue(Long id, IssueUpdateDTO update);

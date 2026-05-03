@@ -22,7 +22,8 @@ export function LoginPage() {
     return (
       roleName === "ADMIN" ||
       roleName === "ROLE_ADMIN" ||
-      roleName === "SUPERADMIN"
+      roleName === "SUPERADMIN" ||
+      roleName === "ROLE_SUPERADMIN"
     );
   }
 
@@ -46,11 +47,11 @@ export function LoginPage() {
             const roles = (currentUser.roles ?? []).map((role) => role.name);
             const hasAdminRole = roles.some(isAdminRole);
 
-            navigate(hasAdminRole ? "/admin" : "/", {
+            navigate(hasAdminRole ? "/admin" : "/projects", {
               replace: true,
             });
           } catch {
-            navigate("/", { replace: true });
+            navigate("/projects", { replace: true });
           }
         },
       },

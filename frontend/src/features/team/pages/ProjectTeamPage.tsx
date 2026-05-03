@@ -83,14 +83,15 @@ export function ProjectTeamPage() {
 
   const availableUsers = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const users = (usersQuery.data ?? []).filter((u) => !memberIds.includes(u.id));
+    const users = (usersQuery.data ?? []).filter(
+      (u) => !memberIds.includes(u.id),
+    );
     if (!q) return users;
-    return users
-      .filter(
-        (u) =>
-          String(u.username).toLowerCase().includes(q) ||
-          String(u.email).toLowerCase().includes(q),
-      );
+    return users.filter(
+      (u) =>
+        String(u.username).toLowerCase().includes(q) ||
+        String(u.email).toLowerCase().includes(q),
+    );
   }, [usersQuery.data, memberIds, query]);
 
   function toggleSelect(userId: number) {
@@ -144,7 +145,9 @@ export function ProjectTeamPage() {
         {membersQuery.isLoading ? (
           <p className="text-sm text-slate-500">Loading members...</p>
         ) : displayMembers.length === 0 ? (
-          <p className="text-sm text-slate-500">No members in this project yet.</p>
+          <p className="text-sm text-slate-500">
+            No members in this project yet.
+          </p>
         ) : (
           <div className="space-y-2">
             {displayMembers.map((member) => (
@@ -180,9 +183,13 @@ export function ProjectTeamPage() {
       </div>
 
       <div className="rounded-lg border bg-white p-6">
-        <h3 className="mb-3 text-sm font-semibold text-slate-950">Add Members</h3>
+        <h3 className="mb-3 text-sm font-semibold text-slate-950">
+          Add Members
+        </h3>
         <label className="block">
-          <span className="text-sm text-slate-600">Search users by name or email</span>
+          <span className="text-sm text-slate-600">
+            Search users by name or email
+          </span>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -197,15 +204,17 @@ export function ProjectTeamPage() {
           ) : isUsersForbidden ? (
             <p className="text-sm text-red-600">
               You do not have permission to list all users (403). Ask admin to
-              grant access, or use a project-scoped endpoint like
-              /v1/projects/{'{'}projectId{'}'}/assignable-users.
+              grant access, or use a project-scoped endpoint like /v1/projects/
+              {"{"}projectId{"}"}/assignable-users.
             </p>
           ) : usersQuery.isError ? (
             <p className="text-sm text-red-600">Failed to load users.</p>
           ) : !usersQuery.data || usersQuery.data.length === 0 ? (
             <p className="text-sm text-slate-500">No users found in system.</p>
           ) : availableUsers.length === 0 ? (
-            <p className="text-sm text-slate-500">No users available to add (all members already added).</p>
+            <p className="text-sm text-slate-500">
+              No users available to add (all members already added).
+            </p>
           ) : (
             availableUsers.map((user) => (
               <div
