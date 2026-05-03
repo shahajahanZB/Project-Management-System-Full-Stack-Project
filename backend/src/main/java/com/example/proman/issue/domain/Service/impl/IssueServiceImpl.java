@@ -244,6 +244,9 @@ public class IssueServiceImpl implements IssueService {
     }
 
     private ProjectEntity getAccessibleProject(Long projectId) {
+        if (projectId == null) {
+            throw new IllegalArgumentException("Project ID is required");
+        }
         ProjectEntity project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
         if (!canAccessProject(project)) {
@@ -426,8 +429,15 @@ public class IssueServiceImpl implements IssueService {
     private boolean isAdmin() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN")
-                        || authority.getAuthority().equals("ROLE_SUPERADMIN"));
+                .anyMatch(authority -> {
+                    String value = authority.getAuthority();
+                    return value.equals("ADMIN")
+                            || value.equals("SUPERADMIN")
+                            || value.equals("ROLE_ADMIN")
+                            || value.equals("ROLE_SUPERADMIN")
+                            || value.equals("ROLE_ROLE_ADMIN")
+                            || value.equals("ROLE_ROLE_SUPERADMIN");
+                });
     }
 
     private IssueResponseDTO mapToResponse(IssueEntity issue) {
@@ -497,6 +507,9 @@ public class IssueServiceImpl implements IssueService {
                 .id(attachment.getId())
                 .fileName(attachment.getFileName())
                 .fileUrl(attachment.getFilePath())
+                .cloudinaryPublicId(attachment.getCloudinaryPublicId())
+                .contentType(attachment.getContentType())
+                .fileSizeBytes(attachment.getFileSizeBytes())
                 .userId(attachment.getUserId())
                 .createdAt(attachment.getCreatedAt())
                 .build();

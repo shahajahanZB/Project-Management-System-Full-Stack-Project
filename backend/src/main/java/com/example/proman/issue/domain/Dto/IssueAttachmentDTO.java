@@ -1,6 +1,5 @@
 package com.example.proman.issue.domain.Dto;
 
-import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.time.Instant;
@@ -16,8 +15,13 @@ public class IssueAttachmentDTO {
 
     private String fileName;
 
-    @NotBlank(message = "File URL is required")
     private String fileUrl;
+
+    private String cloudinaryPublicId;
+
+    private String contentType;
+
+    private Long fileSizeBytes;
 
     private Long userId;
 

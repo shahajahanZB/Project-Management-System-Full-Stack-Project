@@ -5,6 +5,9 @@ import {
   useParams,
 } from "react-router-dom";
 import { AppLayout } from "@/components/shared/AppLayout";
+import RequireAdmin from "@/components/RequireAdmin";
+import RequireAuth from "@/components/RequireAuth";
+import RequirePermission from "@/components/RequirePermission";
 import {
   ForgotPasswordPage,
   LoginPage,
@@ -20,21 +23,23 @@ import {
   AdminRoleMembersPage,
   AdminRoleDetailPage,
 } from "@/features/admin/pages";
-import RequireAdmin from "@/components/RequireAdmin";
-import RequirePermission from "@/components/RequirePermission";
-import { UserDashboardPage } from "@/features/dashboard/pages";
-import { ProjectsPage } from "@/features/projects/pages/ProjectsPage";
+import { useGetCurrentUser } from "@/features/auth/hooks";
+import { EpicsPage, EpicDetailPage } from "@/features/epics";
+import {
+  IssueCreatePage,
+  IssueDetailPage,
+  IssueListPage,
+} from "@/features/issue/pages";
+import { ProjectKanbanPage } from "@/features/projects/pages/ProjectKanbanPage";
 import { ProjectsCreatePage } from "@/features/projects/pages/ProjectsCreatePage";
 import { ProjectsDetailPage } from "@/features/projects/pages/ProjectsDetailPage";
-import { EpicsPage, EpicDetailPage } from "@/features/epics";
-import { ProjectKanbanPage } from "@/features/projects/pages/ProjectKanbanPage";
-import { ProjectIssuesPage } from "@/features/projects/pages/ProjectIssuesPage";
+import { ProjectsPage } from "@/features/projects/pages/ProjectsPage";
 import { ProjectTeamPage } from "@/features/team/pages";
 import { TasksPage } from "@/features/tasks/pages/TasksPage";
 import { UsersPage } from "@/features/users/pages/UsersPage";
+import { ProjectProvider } from "@/contexts/ProjectContext";
 import { UnauthorizedPage } from "@/pages/UnauthorizedPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
-import { ProjectProvider } from "@/contexts/ProjectContext";
 
 function ProjectDetailLayout() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -45,6 +50,26 @@ function ProjectDetailLayout() {
     <ProjectProvider projectId={projectId}>
       <Outlet />
     </ProjectProvider>
+  );
+}
+
+function isAdminRole(role: unknown) {
+  const name = typeof role === "string" ? role : (role as { name?: string })?.name;
+  return ["ADMIN", "ROLE_ADMIN", "SUPERADMIN", "ROLE_SUPERADMIN"].includes(
+    name ?? "",
+  );
+}
+
+function HomeRedirect() {
+  const userQuery = useGetCurrentUser();
+  const roles = userQuery.data?.roles ?? [];
+
+  if (userQuery.isLoading) return null;
+
+  return roles.some(isAdminRole) ? (
+    <Navigate to="/admin" replace />
+  ) : (
+    <Navigate to="/projects" replace />
   );
 }
 
@@ -69,118 +94,147 @@ export const router = createBrowserRouter([
         element: <VerifyOtpPage />,
       },
       {
-        path: "dashboard",
-        element: <Navigate to="/" replace />,
-      },
-      {
         path: "unauthorized",
         element: <UnauthorizedPage />,
       },
       {
-        path: "projects",
-        element: (
-          <RequirePermission perm="PROJECT_VIEW">
-            <ProjectsPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "projects/new",
-        element: (
-          <RequirePermission perm="PROJECT_CREATE">
-            <ProjectsCreatePage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "projects/:projectId",
-        element: <ProjectDetailLayout />,
+        element: <RequireAuth />,
         children: [
           {
             index: true,
+            element: <HomeRedirect />,
+          },
+          {
+            path: "dashboard",
+            element: <Navigate to="/projects" replace />,
+          },
+          {
+            path: "projects",
             element: (
               <RequirePermission perm="PROJECT_VIEW">
-                <ProjectsDetailPage />
+                <ProjectsPage />
               </RequirePermission>
             ),
           },
           {
-            path: "epics",
+            path: "projects/new",
             element: (
-              <RequirePermission perm="EPIC_VIEW">
-                <EpicsPage />
+              <RequirePermission perm="PROJECT_CREATE">
+                <ProjectsCreatePage />
               </RequirePermission>
             ),
           },
           {
-            path: "epics/:epicId",
+            path: "projects/:projectId",
+            element: <ProjectDetailLayout />,
+            children: [
+              {
+                index: true,
+                element: (
+                  <RequirePermission perm="PROJECT_VIEW">
+                    <ProjectsDetailPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: "epics",
+                element: (
+                  <RequirePermission perm="EPIC_VIEW">
+                    <EpicsPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: "epics/:epicId",
+                element: (
+                  <RequirePermission perm="EPIC_VIEW">
+                    <EpicDetailPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: "kanban",
+                element: (
+                  <RequirePermission perm="STORY_VIEW">
+                    <ProjectKanbanPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: "issues",
+                element: (
+                  <RequirePermission perm="STORY_VIEW">
+                    <IssueListPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: "issues/new",
+                element: (
+                  <RequirePermission perm="STORY_VIEW">
+                    <IssueCreatePage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: "issues/:issueId",
+                element: (
+                  <RequirePermission perm="STORY_VIEW">
+                    <IssueDetailPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: "team",
+                element: (
+                  <RequirePermission perm="PROJECT_MANAGE_MEMBERS">
+                    <ProjectTeamPage />
+                  </RequirePermission>
+                ),
+              },
+            ],
+          },
+          {
+            path: "tasks",
             element: (
-              <RequirePermission perm="EPIC_VIEW">
-                <EpicDetailPage />
+              <RequirePermission perm="USER_STORY_VIEW">
+                <TasksPage />
               </RequirePermission>
             ),
           },
           {
-            path: "kanban",
+            path: "users",
             element: (
-              <RequirePermission perm="STORY_VIEW">
-                <ProjectKanbanPage />
+              <RequirePermission perm="USER_UPDATE">
+                <UsersPage />
               </RequirePermission>
             ),
           },
           {
             path: "issues",
-            element: (
-              <RequirePermission perm="STORY_VIEW">
-                <ProjectIssuesPage />
-              </RequirePermission>
-            ),
+            element: <Navigate to="/projects" replace />,
           },
           {
-            path: "team",
+            path: "issues/*",
+            element: <Navigate to="/projects" replace />,
+          },
+          {
+            path: "admin",
             element: (
-              <RequirePermission perm="PROJECT_MANAGE_MEMBERS">
-                <ProjectTeamPage />
-              </RequirePermission>
+              <RequireAdmin>
+                <AdminDashboardPage />
+              </RequireAdmin>
             ),
+            children: [
+              { index: true, element: <AdminHomePage /> },
+              { path: "users", element: <AdminUsersPage /> },
+              { path: "users/:userId", element: <AdminUserDetailPage /> },
+              { path: "roles", element: <AdminRolesPermissionsPage /> },
+              { path: "roles/:roleId", element: <AdminRoleDetailPage /> },
+              { path: "roles/members", element: <AdminRoleMembersPage /> },
+            ],
           },
         ],
-      },
-      {
-        path: "tasks",
-        element: (
-          <RequirePermission perm="USER_STORY_VIEW">
-            <TasksPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "users",
-        element: (
-          <RequirePermission perm="USER_UPDATE">
-            <UsersPage />
-          </RequirePermission>
-        ),
-      },
-      {
-        path: "admin",
-        element: (
-          <RequireAdmin>
-            <AdminDashboardPage />
-          </RequireAdmin>
-        ),
-        children: [
-          { index: true, element: <AdminHomePage /> },
-          { path: "users", element: <AdminUsersPage /> },
-          { path: "users/:userId", element: <AdminUserDetailPage /> },
-          { path: "roles", element: <AdminRolesPermissionsPage /> },
-          { path: "roles/:roleId", element: <AdminRoleDetailPage /> },
-          { path: "roles/members", element: <AdminRoleMembersPage /> },
-        ],
-      },
-      {
-        index: true,
-        element: <UserDashboardPage />,
       },
     ],
   },

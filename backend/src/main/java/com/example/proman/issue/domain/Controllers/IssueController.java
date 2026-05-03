@@ -18,6 +18,8 @@ import com.example.proman.issue.domain.Service.IssueTagService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -26,7 +28,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -42,26 +46,31 @@ public class IssueController {
     private final IssueTagService issueTagService;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('ISSUE_CREATE')")
     public ResponseEntity<IssueResponseDTO> createIssue(@Valid @RequestBody IssueRequestDTO requestDTO) {
         return ResponseEntity.ok(issueService.createIssue(requestDTO));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('ISSUE_VIEW')")
     public ResponseEntity<IssueResponseDTO> getIssueById(@PathVariable Long id) {
         return ResponseEntity.ok(issueService.getIssueById(id));
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('ISSUE_VIEW')")
     public ResponseEntity<List<IssueResponseDTO>> getAllIssues() {
         return ResponseEntity.ok(issueService.getAllIssues());
     }
 
     @GetMapping("/project/{projectId}")
+    @PreAuthorize("hasAuthority('ISSUE_VIEW')")
     public ResponseEntity<List<IssueResponseDTO>> getIssuesByProject(@PathVariable Long projectId) {
         return ResponseEntity.ok(issueService.getIssuesByProject(projectId));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ISSUE_MANAGE')")
     public ResponseEntity<IssueResponseDTO> updateIssue(
             @PathVariable Long id,
             @Valid @RequestBody IssueUpdateDTO updateDTO
@@ -70,6 +79,7 @@ public class IssueController {
     }
 
     @PatchMapping("/{id}/assignee")
+    @PreAuthorize("hasAuthority('ISSUE_ASSIGN')")
     public ResponseEntity<IssueResponseDTO> assignIssue(
             @PathVariable Long id,
             @Valid @RequestBody IssueAssigneeRequestDTO request
@@ -78,11 +88,13 @@ public class IssueController {
     }
 
     @DeleteMapping("/{id}/assignee")
+    @PreAuthorize("hasAuthority('ISSUE_ASSIGN')")
     public ResponseEntity<IssueResponseDTO> removeAssignee(@PathVariable Long id) {
         return ResponseEntity.ok(issueService.removeAssignee(id));
     }
 
     @PostMapping("/{id}/tags")
+    @PreAuthorize("hasAuthority('ISSUE_TAG')")
     public ResponseEntity<IssueResponseDTO> addTags(
             @PathVariable Long id,
             @Valid @RequestBody IssueTagIdsRequestDTO request
@@ -91,6 +103,7 @@ public class IssueController {
     }
 
     @DeleteMapping("/{id}/tags")
+    @PreAuthorize("hasAuthority('ISSUE_TAG')")
     public ResponseEntity<IssueResponseDTO> removeTags(
             @PathVariable Long id,
             @Valid @RequestBody IssueTagIdsRequestDTO request
@@ -99,6 +112,7 @@ public class IssueController {
     }
 
     @PostMapping("/{id}/watchers")
+    @PreAuthorize("hasAuthority('ISSUE_WATCHER_MANAGE')")
     public ResponseEntity<IssueResponseDTO> addWatchers(
             @PathVariable Long id,
             @Valid @RequestBody IssueUsersRequestDTO request
@@ -107,6 +121,7 @@ public class IssueController {
     }
 
     @DeleteMapping("/{id}/watchers")
+    @PreAuthorize("hasAuthority('ISSUE_WATCHER_MANAGE')")
     public ResponseEntity<IssueResponseDTO> removeWatchers(
             @PathVariable Long id,
             @Valid @RequestBody IssueUsersRequestDTO request
@@ -115,6 +130,7 @@ public class IssueController {
     }
 
     @PostMapping("/{id}/comments")
+    @PreAuthorize("hasAuthority('ISSUE_COMMENT')")
     public ResponseEntity<IssueCommentDTO> addComment(
             @PathVariable Long id,
             @Valid @RequestBody IssueCommentDTO request
@@ -123,11 +139,13 @@ public class IssueController {
     }
 
     @GetMapping("/{id}/comments")
+    @PreAuthorize("hasAuthority('ISSUE_VIEW')")
     public ResponseEntity<List<IssueCommentDTO>> getComments(@PathVariable Long id) {
         return ResponseEntity.ok(issueCommentService.getCommentsByIssue(id));
     }
 
     @PutMapping("/comments/{commentId}")
+    @PreAuthorize("hasAuthority('ISSUE_COMMENT')")
     public ResponseEntity<IssueCommentDTO> updateComment(
             @PathVariable Long commentId,
             @Valid @RequestBody IssueCommentDTO request
@@ -136,46 +154,54 @@ public class IssueController {
     }
 
     @DeleteMapping("/comments/{commentId}")
+    @PreAuthorize("hasAuthority('ISSUE_COMMENT')")
     public ResponseEntity<Void> deleteComment(@PathVariable Long commentId) {
         issueCommentService.deleteComment(commentId);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/attachments")
+    @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('ISSUE_ATTACHMENT')")
     public ResponseEntity<IssueAttachmentDTO> addAttachment(
             @PathVariable Long id,
-            @Valid @RequestBody IssueAttachmentDTO request
+            @RequestPart("file") MultipartFile file
     ) {
-        return ResponseEntity.ok(issueAttachmentService.addAttachment(id, request));
+        return ResponseEntity.ok(issueAttachmentService.addAttachment(id, file));
     }
 
     @GetMapping("/{id}/attachments")
+    @PreAuthorize("hasAuthority('ISSUE_VIEW')")
     public ResponseEntity<List<IssueAttachmentDTO>> getAttachments(@PathVariable Long id) {
         return ResponseEntity.ok(issueAttachmentService.getAttachments(id));
     }
 
     @DeleteMapping("/attachments/{attachmentId}")
+    @PreAuthorize("hasAuthority('ISSUE_ATTACHMENT')")
     public ResponseEntity<Void> deleteAttachment(@PathVariable Long attachmentId) {
         issueAttachmentService.deleteAttachment(attachmentId);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/activities")
+    @PreAuthorize("hasAuthority('ISSUE_VIEW')")
     public ResponseEntity<List<IssueActivityDTO>> getActivities(@PathVariable Long id) {
         return ResponseEntity.ok(issueActivityService.getActivities(id));
     }
 
     @GetMapping("/tags")
+    @PreAuthorize("hasAuthority('ISSUE_VIEW')")
     public ResponseEntity<List<IssueTagDTO>> getTags() {
         return ResponseEntity.ok(issueTagService.getAllTags());
     }
 
     @PostMapping("/tags")
+    @PreAuthorize("hasAuthority('ISSUE_TAG')")
     public ResponseEntity<IssueTagDTO> createTag(@Valid @RequestBody IssueTagDTO request) {
         return ResponseEntity.ok(issueTagService.createTag(request));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ISSUE_DELETE')")
     public ResponseEntity<Void> deleteIssue(@PathVariable Long id) {
         issueService.deleteIssue(id);
         return ResponseEntity.noContent().build();

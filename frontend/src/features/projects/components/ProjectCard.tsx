@@ -40,9 +40,10 @@ export function ProjectCard({ project }: ProjectCardProps) {
             <FolderKanban className="size-5" aria-hidden="true" />
           </div>
           <StatusBadge
-            status={project.status}
             tone={statusTone[project.status]}
-          />
+          >
+            {statusLabel[project.status]}
+          </StatusBadge>
         </div>
 
         <div className="mb-3 min-w-0 text-left">

@@ -6,9 +6,11 @@ import com.example.proman.iam.domain.entity.RefreshToken;
 import com.example.proman.iam.domain.entity.RoleEntity;
 import com.example.proman.iam.domain.entity.UserEntity;
 import com.example.proman.iam.domain.entity.UserPrincipal;
+import com.example.proman.iam.domain.entity.UserProfileEntity;
 import com.example.proman.iam.domain.repository.PasswordResetOtpRepository;
 import com.example.proman.iam.domain.repository.RoleRepository;
 import com.example.proman.iam.domain.repository.UserRepository;
+import com.example.proman.iam.domain.repository.UserProfileRepository;
 import com.example.proman.iam.domain.service.AuthService;
 import com.example.proman.iam.domain.service.JWTService;
 import com.example.proman.iam.domain.service.RefreshTokenService;
@@ -41,6 +43,7 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
     private final RoleRepository roleRepository;
     private final PasswordResetOtpRepository passwordResetOtpRepository;
+    private final UserProfileRepository userProfileRepository;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -50,7 +53,8 @@ public class AuthServiceImpl implements AuthService {
             JWTService jwtService,
             RefreshTokenService refreshTokenService,
             RoleRepository roleRepository,
-            PasswordResetOtpRepository passwordResetOtpRepository
+            PasswordResetOtpRepository passwordResetOtpRepository,
+            UserProfileRepository userProfileRepository
     ) {
         this.userRepository = userRepository;
         this.authManager = authManager;
@@ -58,6 +62,7 @@ public class AuthServiceImpl implements AuthService {
         this.refreshTokenService = refreshTokenService;
         this.roleRepository = roleRepository;
         this.passwordResetOtpRepository = passwordResetOtpRepository;
+        this.userProfileRepository = userProfileRepository;
     }
 
     @Override
@@ -81,6 +86,9 @@ public class AuthServiceImpl implements AuthService {
             user.setRoles(roles);
         }
 
+        UserProfileEntity profile = new UserProfileEntity();
+        profile.setUser(user);
+        user.setProfile(profile);
         userRepository.save(user);
         return ResponseEntity.status(201).body("User created successfully");
     }

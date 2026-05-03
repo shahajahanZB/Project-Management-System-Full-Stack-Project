@@ -24,7 +24,7 @@ public class IssueEntity {
     @JoinColumn(name = "project_id", nullable = false)
     private ProjectEntity project;
 
-    @Column(name = "assignee_id")
+    @Column(name = "assigneeid", nullable = false)
     private Long assigneeId;
 
     @Column(nullable = false, length = 255)
