@@ -97,6 +97,16 @@ public class IssueServiceImpl implements IssueService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<IssueResponseDTO> getAllIssues() {
+        return issueRepository.findAll()
+                .stream()
+                .filter(issue -> canAccessProject(issue.getProject()))
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<IssueResponseDTO> getIssuesByProject(Long projectId) {
         getAccessibleProject(projectId);
         return issueRepository.findAllByProject_IdOrderByCreatedAtDesc(projectId)
