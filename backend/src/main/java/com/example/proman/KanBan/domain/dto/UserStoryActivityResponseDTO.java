@@ -12,6 +12,7 @@ public class UserStoryActivityResponseDTO {
     private Long id;
     private Long userStoryId;
     private Long userId;
+    private String username;
     private String activity;
     private Instant createdAt;
 }

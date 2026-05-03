@@ -43,6 +43,9 @@ public class UserEntity {
     )
     private Set<RoleEntity> roles = new HashSet<>();
 
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private UserProfileEntity profile;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = Instant.now();

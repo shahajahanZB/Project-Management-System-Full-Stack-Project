@@ -672,6 +672,9 @@ public class UserStoryServiceImpl implements UserStoryService {
         dto.setId(activity.getId());
         dto.setUserStoryId(activity.getUserStory().getId());
         dto.setUserId(activity.getUserId());
+        dto.setUsername(userRepository.findById(activity.getUserId())
+                .map(UserEntity::getUsername)
+                .orElse(null));
         dto.setActivity(activity.getActivity());
         dto.setCreatedAt(activity.getCreatedAt());
         return dto;

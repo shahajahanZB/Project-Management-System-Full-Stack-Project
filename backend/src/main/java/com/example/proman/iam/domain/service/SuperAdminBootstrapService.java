@@ -12,25 +12,18 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
 @Component
+@Order(2)
 public class SuperAdminBootstrapService implements ApplicationRunner {
-
     private static final Logger log = LoggerFactory.getLogger(SuperAdminBootstrapService.class);
-    private static final List<String> MINIMUM_BOOTSTRAP_PERMISSIONS = List.of(
-            "USER_CREATE",
-            "USER_UPDATE",
-            "USER_DELETE",
-            "USER_VIEW_ALL",
-            "ROLE_MANAGE"
-    );
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -80,7 +73,6 @@ public class SuperAdminBootstrapService implements ApplicationRunner {
         String primaryRoleName = normalizedRoleName();
         RoleEntity primaryRole = resolveOrCreateRole(primaryRoleName);
 
-        ensureMinimumPermissions();
         Set<PermissionEntity> allPermissions = new HashSet<>(permissionRepository.findAll());
         grantAllPermissions(primaryRole, allPermissions);
 
@@ -110,13 +102,6 @@ public class SuperAdminBootstrapService implements ApplicationRunner {
         userRepository.save(user);
         log.warn("Bootstrap super admin created with email={} and role=[{}]. Change password immediately.",
                 email, primaryRole.getName());
-    }
-
-    private void ensureMinimumPermissions() {
-        for (String access : MINIMUM_BOOTSTRAP_PERMISSIONS) {
-            permissionRepository.findByAccess(access)
-                    .orElseGet(() -> permissionRepository.save(new PermissionEntity(access)));
-        }
     }
 
     private void validateConfig() {
