@@ -17,6 +17,7 @@ import com.example.proman.issue.domain.Service.IssueService;
 import com.example.proman.issue.domain.Service.IssueTagService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +28,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -41,19 +44,25 @@ public class IssueController {
     private final IssueActivityService issueActivityService;
     private final IssueTagService issueTagService;
 
+    @PostMapping("/project/{projectId}")
+    public ResponseEntity<IssueResponseDTO> createIssue(
+            @PathVariable Long projectId,
+            @Valid @RequestBody IssueRequestDTO requestDTO
+    ) {
+        requestDTO.setProjectId(projectId);
+        return ResponseEntity.status(201).body(issueService.createIssue(requestDTO));
+    }
+
     @PostMapping
-    public ResponseEntity<IssueResponseDTO> createIssue(@Valid @RequestBody IssueRequestDTO requestDTO) {
-        return ResponseEntity.ok(issueService.createIssue(requestDTO));
+    public ResponseEntity<IssueResponseDTO> createIssueFromBody(
+            @Valid @RequestBody IssueRequestDTO requestDTO
+    ) {
+        return ResponseEntity.status(201).body(issueService.createIssue(requestDTO));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<IssueResponseDTO> getIssueById(@PathVariable Long id) {
         return ResponseEntity.ok(issueService.getIssueById(id));
-    }
-
-    @GetMapping
-    public ResponseEntity<List<IssueResponseDTO>> getAllIssues() {
-        return ResponseEntity.ok(issueService.getAllIssues());
     }
 
     @GetMapping("/project/{projectId}")
@@ -141,12 +150,12 @@ public class IssueController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{id}/attachments")
+    @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<IssueAttachmentDTO> addAttachment(
             @PathVariable Long id,
-            @Valid @RequestBody IssueAttachmentDTO request
+            @RequestPart("file") MultipartFile file
     ) {
-        return ResponseEntity.ok(issueAttachmentService.addAttachment(id, request));
+        return ResponseEntity.ok(issueAttachmentService.addAttachment(id, file));
     }
 
     @GetMapping("/{id}/attachments")

@@ -128,7 +128,14 @@ public class IssueCommentServiceImpl implements IssueCommentService {
     private boolean isAdmin() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN")
-                        || authority.getAuthority().equals("ROLE_SUPERADMIN"));
+                .anyMatch(authority -> {
+                    String value = authority.getAuthority();
+                    return value.equals("ADMIN")
+                            || value.equals("SUPERADMIN")
+                            || value.equals("ROLE_ADMIN")
+                            || value.equals("ROLE_SUPERADMIN")
+                            || value.equals("ROLE_ROLE_ADMIN")
+                            || value.equals("ROLE_ROLE_SUPERADMIN");
+                });
     }
 }

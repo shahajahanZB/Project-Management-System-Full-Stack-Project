@@ -14,7 +14,6 @@ import java.util.Set;
 @Builder
 public class IssueRequestDTO {
 
-    @NotNull(message = "Project ID is required")
     private Long projectId;
 
     @JsonAlias("assigneeID")

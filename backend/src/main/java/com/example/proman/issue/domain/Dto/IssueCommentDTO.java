@@ -23,5 +23,5 @@ public class IssueCommentDTO {
 
     private Instant updatedAt;
 
-    private boolean deleted;
+    private Boolean deleted;
 }

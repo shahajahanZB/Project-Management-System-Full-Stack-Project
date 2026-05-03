@@ -8,10 +8,12 @@ export default function RequireAdmin({ children }: { children: JSX.Element }) {
 
   const roles = userQuery.data?.roles ?? [];
   const isAdmin = roles.some((r: any) =>
-    ["ADMIN", "SUPERADMIN"].includes(r?.name ?? r),
+    ["ADMIN", "ROLE_ADMIN", "SUPERADMIN", "ROLE_SUPERADMIN"].includes(
+      r?.name ?? r,
+    ),
   );
 
-  if (!isAdmin) return <Navigate to="/" replace />;
+  if (!isAdmin) return <Navigate to="/projects" replace />;
 
   return children;
 }
