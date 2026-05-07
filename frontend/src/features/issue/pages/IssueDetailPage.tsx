@@ -257,14 +257,24 @@ export function IssueDetailPage() {
     });
   };
 
-  const handleUploadAttachments = (files: FileList | null) => {
+  const handleUploadAttachments = async (files: FileList | null) => {
     if (!files?.length || !canEdit) return;
 
-    Array.from(files).forEach((file) => {
-      uploadAttachmentMutation.mutate(file, {
-        onError: () => setMessage(`Attachment could not be uploaded: ${file.name}`),
-      });
-    });
+    const selectedFiles = Array.from(files);
+    setMessage("");
+
+    try {
+      await Promise.all(
+        selectedFiles.map((file) => uploadAttachmentMutation.mutateAsync(file)),
+      );
+      setMessage(
+        selectedFiles.length === 1
+          ? "Attachment uploaded."
+          : `${selectedFiles.length} attachments uploaded.`,
+      );
+    } catch {
+      setMessage("One or more attachments could not be uploaded.");
+    }
   };
 
   if (issueQuery.isLoading) {
@@ -529,7 +539,7 @@ export function IssueDetailPage() {
                       multiple
                       className="hidden"
                       onChange={(event) => {
-                        handleUploadAttachments(event.target.files);
+                        void handleUploadAttachments(event.target.files);
                         event.currentTarget.value = "";
                       }}
                     />

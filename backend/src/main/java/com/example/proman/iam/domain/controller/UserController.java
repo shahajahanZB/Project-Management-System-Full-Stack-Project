@@ -14,6 +14,9 @@ import java.util.Map;
 @RequestMapping("/api/v1/iam")
 public class UserController {
 
+    private static final String CAN_VIEW_USERS =
+            "hasAnyRole('ADMIN','SUPERADMIN') or hasAuthority('USER_VIEW_ALL')";
+
     private final AuthService authService;
     private final RolePermissionService rolePermissionService;
 
@@ -54,7 +57,7 @@ public class UserController {
         return ResponseEntity.ok(authService.assignRoles(req.getUserIds(), req.getRoleId()));
     }
 
-    @PreAuthorize("hasAuthority('USER_VIEW_ALL')")
+    @PreAuthorize(CAN_VIEW_USERS)
     @GetMapping("/users")
     public ResponseEntity<List<UserWithRolesDTO>> getAllUsersWithRoles() {
         return ResponseEntity.ok(authService.getAllUsersWithRoles());
