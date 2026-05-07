@@ -88,6 +88,7 @@ public class AuthServiceImpl implements AuthService {
 
         UserProfileEntity profile = new UserProfileEntity();
         profile.setUser(user);
+        profile.setFullName(user.getUsername());
         user.setProfile(profile);
         userRepository.save(user);
         return ResponseEntity.status(201).body("User created successfully");

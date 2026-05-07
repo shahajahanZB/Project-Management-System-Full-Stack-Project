@@ -1,12 +1,10 @@
 package com.example.proman.iam.domain.service.impl;
 
-import com.example.proman.iam.domain.dto.UserProfileCreateRequestDTO;
 import com.example.proman.iam.domain.dto.UserProfileResponseDTO;
 import com.example.proman.iam.domain.dto.UserProfileUpdateRequestDTO;
 import com.example.proman.iam.domain.entity.UserEntity;
 import com.example.proman.iam.domain.entity.UserProfileEntity;
 import com.example.proman.iam.domain.repository.UserProfileRepository;
-import com.example.proman.iam.domain.repository.UserRepository;
 import com.example.proman.iam.domain.service.UserProfileService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -20,63 +18,30 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class UserProfileServiceImpl implements UserProfileService {
 
-    private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
-
-    @Override
-    @Transactional
-    public UserProfileResponseDTO createProfile(Long userId, UserProfileCreateRequestDTO request) {
-        assertCurrentUser(userId);
-        UserProfileEntity profile = getOrCreateProfile(userId);
-        applyCreateRequest(profile, request);
-        return toResponse(userProfileRepository.save(profile));
-    }
 
     @Override
     @Transactional
     public UserProfileResponseDTO getProfile(Long userId) {
         assertCurrentUser(userId);
-        return toResponse(getOrCreateProfile(userId));
+        return toResponse(getExistingProfile(userId));
     }
 
     @Override
     @Transactional
     public UserProfileResponseDTO updateProfile(Long userId, UserProfileUpdateRequestDTO request) {
         assertCurrentUser(userId);
-        UserProfileEntity profile = getOrCreateProfile(userId);
+        UserProfileEntity profile = getExistingProfile(userId);
         applyUpdateRequest(profile, request);
         return toResponse(userProfileRepository.save(profile));
     }
 
-    private UserProfileEntity getOrCreateProfile(Long userId) {
+    private UserProfileEntity getExistingProfile(Long userId) {
         return userProfileRepository.findByUser_Id(userId)
-                .orElseGet(() -> {
-                    UserEntity user = userRepository.findById(userId)
-                            .orElseThrow(() -> new EntityNotFoundException("User not found"));
-                    UserProfileEntity profile = new UserProfileEntity();
-                    profile.setUser(user);
-                    user.setProfile(profile);
-                    userRepository.save(user);
-                    return userProfileRepository.save(profile);
-                });
-    }
-
-    private void applyCreateRequest(UserProfileEntity profile, UserProfileCreateRequestDTO request) {
-        profile.setFullName(request.getFullName());
-        profile.setJobTitle(request.getJobTitle());
-        profile.setDepartment(request.getDepartment());
-        profile.setEmployeeCode(request.getEmployeeCode());
-        profile.setLocation(request.getLocation());
-        profile.setAvatarUrl(request.getAvatarUrl());
-        profile.setPhoneNumber(request.getPhoneNumber());
-        profile.setGithubUsername(request.getGithubUsername());
-        profile.setBio(request.getBio());
+                .orElseThrow(() -> new EntityNotFoundException("Profile not found"));
     }
 
     private void applyUpdateRequest(UserProfileEntity profile, UserProfileUpdateRequestDTO request) {
-        if (request.getFullName() != null) {
-            profile.setFullName(request.getFullName());
-        }
         if (request.getJobTitle() != null) {
             profile.setJobTitle(request.getJobTitle());
         }
