@@ -78,11 +78,6 @@ export async function uploadIssueAttachment(issueId: number, file: File) {
   const response = await apiClient.post<IssueAttachment>(
     `/v1/issues/${issueId}/attachments`,
     body,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    },
   );
   return response.data;
 }
