@@ -9,6 +9,7 @@ export function AppLayout() {
     "/forgot-password",
     "/verify-otp",
     "/unauthorized",
+    "/dashboard",
   ];
   const isNoChromeRoute =
     noChromeRoutes.includes(location.pathname) || location.pathname === "/";
