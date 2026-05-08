@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink, useNavigate, useParams } from "react-router-dom";
-import { useGetCurrentUser } from "@/features/auth/hooks";
+import { useGetCurrentUser, useGetUserProfile } from "@/features/auth/hooks";
 import { useProject, useProjects } from "@/features/projects/hooks";
 import { APP_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -97,6 +97,9 @@ export default function GlobalSidebar() {
 
   const roles = (userQuery.data?.roles as any[]) ?? [];
   const permissions: string[] = userQuery.data?.permissions ?? [];
+  const profileQuery = useGetUserProfile(userQuery.data?.id);
+  const avatarUrl = profileQuery.data?.avatarUrl ??
+    (userQuery.data as any)?.profile?.avatarUrl;
   const isAdmin = roles.some((role: any) => {
     const name = typeof role === "string" ? role : role?.name;
     return ["ADMIN", "ROLE_ADMIN", "SUPERADMIN", "ROLE_SUPERADMIN"].includes(
@@ -274,16 +277,33 @@ export default function GlobalSidebar() {
           </div>
 
           <div className={cn("border-t p-3", !expanded && "hidden")}>
-            <div className="flex items-center gap-3 rounded-md border p-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700">
-                {initials || "U"}
+            <div
+              onClick={() => navigate("/profile")}
+              className="flex cursor-pointer items-center gap-3 rounded-md border p-2 hover:bg-slate-100"
+              title="View profile"
+            >
+              <div className="relative h-9 w-9 overflow-hidden rounded-full bg-indigo-100">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={`${displayName} avatar`}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-indigo-700">
+                    {initials || "U"}
+                  </div>
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{displayName}</p>
                 <p className="text-xs text-slate-500">{getRoleLabel()}</p>
               </div>
               <button
-                onClick={handleLogout}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleLogout();
+                }}
                 className="inline-flex size-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                 title="Log out"
               >

@@ -16,12 +16,15 @@ import {
   getUnassignedPermissionsByRole,
   getUsersByRole,
   getUsersWithNoRoles,
+  getUserProfile,
   login,
   requestPasswordResetOTP,
   resetPassword,
   signUp,
   updateUser,
+  updateUserProfile,
 } from "./api";
+import type { UserProfileUpdatePayload } from "./types";
 
 // ============================================================================
 // AUTH Hooks
@@ -68,6 +71,26 @@ export function useGetUsersWithNoRoles(enabled = true) {
     queryKey: ["users-no-roles"],
     queryFn: getUsersWithNoRoles,
     enabled,
+  });
+}
+
+export function useGetUserProfile(userId: number | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["user-profile", userId],
+    queryFn: () => getUserProfile(userId as number),
+    enabled: enabled && typeof userId === "number",
+  });
+}
+
+export function useUpdateUserProfileMutation() {
+  return useMutation({
+    mutationFn: ({
+      userId,
+      payload,
+    }: {
+      userId: number;
+      payload: UserProfileUpdatePayload;
+    }) => updateUserProfile(userId, payload),
   });
 }
 

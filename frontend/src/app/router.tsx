@@ -205,6 +205,10 @@ export const router = createBrowserRouter([
             ),
           },
           {
+            path: "profile",
+            element: <UsersPage />, // current user profile page
+          },
+          {
             path: "users",
             element: (
               <RequirePermission perm="USER_UPDATE">
