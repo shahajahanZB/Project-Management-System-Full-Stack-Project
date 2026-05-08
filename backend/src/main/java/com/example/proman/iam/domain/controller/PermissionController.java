@@ -20,7 +20,6 @@ public class PermissionController {
     }
 
     @PostMapping("/bulk")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> bulkCreate(@RequestBody PermissionBulkRequest request) {
         permissionService.bulkCreate(request.getPermissions());
         return ResponseEntity.ok().build();

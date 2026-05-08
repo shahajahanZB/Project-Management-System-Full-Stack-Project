@@ -6,29 +6,11 @@ import com.example.proman.KanBan.domain.repository.ProjectRepository;
 import com.example.proman.iam.domain.entity.UserEntity;
 import com.example.proman.iam.domain.entity.UserPrincipal;
 import com.example.proman.iam.domain.repository.UserRepository;
-import com.example.proman.issue.domain.Dto.IssueActivityDTO;
-import com.example.proman.issue.domain.Dto.IssueAttachmentDTO;
-import com.example.proman.issue.domain.Dto.IssueCommentDTO;
-import com.example.proman.issue.domain.Dto.IssueRequestDTO;
-import com.example.proman.issue.domain.Dto.IssueResponseDTO;
-import com.example.proman.issue.domain.Dto.IssueTagDTO;
-import com.example.proman.issue.domain.Dto.IssueUpdateDTO;
-import com.example.proman.issue.domain.Dto.IssueWatcherDTO;
-import com.example.proman.issue.domain.Entity.IssueActivityEntity;
-import com.example.proman.issue.domain.Entity.IssueEntity;
-import com.example.proman.issue.domain.Entity.IssueTagEntity;
-import com.example.proman.issue.domain.Entity.IssueWatcherEntity;
-import com.example.proman.issue.domain.Enums.IssuePriority;
-import com.example.proman.issue.domain.Enums.IssueSeverity;
-import com.example.proman.issue.domain.Enums.IssueStatus;
-import com.example.proman.issue.domain.Enums.IssueType;
-import com.example.proman.issue.domain.Repository.IssueActivityRepository;
-import com.example.proman.issue.domain.Repository.IssueAttachmentRepository;
-import com.example.proman.issue.domain.Repository.IssueCommentRepository;
-import com.example.proman.issue.domain.Repository.IssueRepository;
-import com.example.proman.issue.domain.Repository.IssueTagRepository;
-import com.example.proman.issue.domain.Repository.IssueWatcherRepository;
-import com.example.proman.issue.domain.Service.IssueService;
+import com.example.proman.issue.domain.Dto.*;
+import com.example.proman.issue.domain.Entity.*;
+import com.example.proman.issue.domain.Enums.*;
+import com.example.proman.issue.domain.Repository.*;
+import com.example.proman.issue.domain.Service.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -61,18 +43,18 @@ public class IssueServiceImpl implements IssueService {
 
     @Override
     @Transactional
-    public IssueResponseDTO createIssue(IssueRequestDTO dto) {
+    public IssueResponseDTO createIssue(Long projectId,IssueRequestDTO dto) {
         UserEntity currentUser = getCurrentUser();
-        ProjectEntity project = getAccessibleProject(dto.getProjectId());
+        ProjectEntity project = getAccessibleProject(projectId);
 
         IssueEntity issue = new IssueEntity();
         issue.setProject(project);
-        issue.setAssigneeId(resolveOptionalProjectUser(project, dto.getAssigneeId()));
+        issue.setAssignee(resolveOptionalProjectUser(project, dto.getAssigneeId()));
         issue.setTitle(requiredTrim(dto.getTitle(), "Title is required"));
         issue.setDescription(requiredTrim(dto.getDescription(), "Description is required"));
         issue.setDueDate(dto.getDueDate());
         issue.setIsBlocked(dto.getIsBlocked() == null ? Boolean.FALSE : dto.getIsBlocked());
-        issue.setCreatedById(currentUser.getId());
+        issue.setCreatedBy(currentUser);
         issue.setStatus(parseStatus(dto.getStatus()));
         issue.setType(parseType(dto.getType()));
         issue.setSeverity(parseSeverity(dto.getSeverity()));
@@ -178,9 +160,9 @@ public class IssueServiceImpl implements IssueService {
     public IssueResponseDTO removeAssignee(Long id) {
         IssueEntity issue = getAccessibleIssue(id);
         Long currentUserId = getCurrentUser().getId();
-        if (issue.getAssigneeId() != null) {
-            Long previous = issue.getAssigneeId();
-            issue.setAssigneeId(null);
+        if (issue.getAssignee() != null) {
+            Long previous = issue.getAssignee().getId();
+            issue.setAssignee(null);
             recordActivity(issue, "Assignee removed: " + previous, currentUserId);
         }
         return mapToResponse(issueRepository.save(issue));
@@ -263,20 +245,23 @@ public class IssueServiceImpl implements IssueService {
     }
 
     private void updateAssignee(IssueEntity issue, Long assigneeId, Long currentUserId) {
-        Long resolvedAssigneeId = resolveOptionalProjectUser(issue.getProject(), assigneeId);
-        if (!Objects.equals(issue.getAssigneeId(), resolvedAssigneeId)) {
-            recordActivity(issue, "Assignee changed from " + issue.getAssigneeId() + " to " + resolvedAssigneeId, currentUserId);
+        UserEntity resolvedAssignee = resolveOptionalProjectUser(issue.getProject(), assigneeId);
+        Long currentAssigneeId = issue.getAssignee() == null ? null : issue.getAssignee().getId();
+        Long resolvedAssigneeId = resolvedAssignee == null ? null : resolvedAssignee.getId();
+        if (!Objects.equals(currentAssigneeId, resolvedAssigneeId)) {
+            recordActivity(issue, "Assignee changed from " + currentAssigneeId + " to " + resolvedAssigneeId, currentUserId);
         }
-        issue.setAssigneeId(resolvedAssigneeId);
+        issue.setAssignee(resolvedAssignee);
     }
 
-    private Long resolveOptionalProjectUser(ProjectEntity project, Long userId) {
+    private UserEntity resolveOptionalProjectUser(ProjectEntity project, Long userId) {
         if (userId == null) {
             return null;
         }
         validateUsersExist(Set.of(userId));
         validateProjectUsers(project, Set.of(userId));
-        return userId;
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
     }
 
     private void replaceWatchers(IssueEntity issue, Set<Long> watcherIds, Long currentUserId) {
@@ -444,7 +429,7 @@ public class IssueServiceImpl implements IssueService {
         IssueResponseDTO dto = new IssueResponseDTO();
         dto.setId(issue.getId());
         dto.setProjectId(issue.getProject().getId());
-        dto.setAssigneeId(issue.getAssigneeId());
+        dto.setAssigneeId(issue.getAssignee() == null ? null : issue.getAssignee().getId());
         dto.setTitle(issue.getTitle());
         dto.setDescription(issue.getDescription());
         dto.setCreatedAt(issue.getCreatedAt());
@@ -455,7 +440,7 @@ public class IssueServiceImpl implements IssueService {
         dto.setType(issue.getType().name());
         dto.setSeverity(issue.getSeverity().name());
         dto.setPriority(issue.getPriority().name());
-        dto.setCreatedById(issue.getCreatedById());
+        dto.setCreatedById(issue.getCreatedBy().getId());
         dto.setTags(issue.getTags().stream().map(this::mapTag).collect(Collectors.toSet()));
         dto.setWatchers(issueWatcherRepository.findAllByIssue_IdOrderByCreatedAtDesc(issue.getId())
                 .stream()

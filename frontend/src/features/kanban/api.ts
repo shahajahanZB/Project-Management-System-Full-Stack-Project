@@ -41,7 +41,23 @@ function asNumber(value: unknown) {
   return Number.isFinite(numberValue) ? numberValue : undefined;
 }
 
+function slugifyValue(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
 function normalizeUser(value: unknown, index: number): KanbanUser {
+  if (typeof value === "string" || typeof value === "number") {
+    return {
+      id: String(value),
+      name: `User ${value}`,
+      avatarColor: "bg-slate-700",
+    };
+  }
+
   const record = asRecord(value);
   const id = String(record.id ?? record.userId ?? index);
   const name = String(
@@ -59,7 +75,7 @@ function normalizeUser(value: unknown, index: number): KanbanUser {
 function normalizeTag(value: unknown, index: number): KanbanTag {
   if (typeof value === "string") {
     return {
-      id: value,
+      id: slugifyValue(value) || value,
       label: value,
       color: "bg-slate-100 text-slate-700 ring-slate-200",
     };
@@ -67,8 +83,9 @@ function normalizeTag(value: unknown, index: number): KanbanTag {
 
   const record = asRecord(value);
   const label = String(record.name ?? record.label ?? `Tag ${index + 1}`);
+  const id = String(record.id ?? record.name ?? record.label ?? label);
   return {
-    id: String(record.id ?? record.name ?? record.label ?? label),
+    id: slugifyValue(id) || id,
     label,
     color: "bg-slate-100 text-slate-700 ring-slate-200",
   };
@@ -80,8 +97,13 @@ function normalizeAttachment(value: unknown, index: number): KanbanAttachment {
   return {
     id: String(attachmentId ?? record.id ?? record.attachmentId ?? index),
     attachmentId,
-    name: String(record.fileName ?? record.name ?? `Attachment ${index + 1}`),
-    size: Number(record.size ?? record.fileSize ?? 0),
+    name: String(
+      record.originalFileName ??
+        record.fileName ??
+        record.name ??
+        `Attachment ${index + 1}`,
+    ),
+    size: Number(record.fileSizeBytes ?? record.size ?? record.fileSize ?? 0),
   };
 }
 
@@ -98,11 +120,15 @@ function normalizeStory(value: unknown): UserStory {
     ? record.assignees
     : Array.isArray(record.users)
       ? record.users
+      : Array.isArray(record.assignedUserIds)
+        ? record.assignedUserIds
+        : [];
+  const tags = Array.isArray(record.tags)
+    ? record.tags
+    : Array.isArray(record.tagNames)
+      ? record.tagNames
       : [];
-  const tags = Array.isArray(record.tags) ? record.tags : [];
-  const attachments = Array.isArray(record.attachments)
-    ? record.attachments
-    : [];
+  const attachments = Array.isArray(record.attachments) ? record.attachments : [];
 
   return {
     id,
@@ -114,7 +140,18 @@ function normalizeStory(value: unknown): UserStory {
     assignees: assignees.map(normalizeUser),
     tags: tags.map(normalizeTag),
     attachments: attachments.map(normalizeAttachment),
-    updatedAt: record.updatedAt ? String(record.updatedAt) : undefined,
+    attachmentCount: asNumber(record.attachmentCount),
+    commentCount: asNumber(record.commentCount),
+    activityCount: asNumber(record.activityCount),
+    updatedAt: record.updatedAt
+      ? String(record.updatedAt)
+      : record.modifiedDate
+        ? String(record.modifiedDate)
+        : record.modifiedAt
+          ? String(record.modifiedAt)
+          : record.createdDate
+            ? String(record.createdDate)
+            : undefined,
   };
 }
 

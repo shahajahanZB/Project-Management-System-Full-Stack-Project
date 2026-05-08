@@ -7,7 +7,7 @@ import java.util.Set;
 
 public interface IssueService {
 
-    IssueResponseDTO createIssue(IssueRequestDTO request);
+    IssueResponseDTO createIssue(Long projectId, IssueRequestDTO request);
 
     IssueResponseDTO getIssueById(Long id);
 

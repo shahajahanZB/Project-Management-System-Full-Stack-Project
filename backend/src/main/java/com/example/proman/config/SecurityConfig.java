@@ -122,7 +122,8 @@ public class SecurityConfig {
                 "http://127.0.0.1:5174",
                 "https://aviators-dev-1095282091.ap-south-1.elb.amazonaws.com",
                 "https://aviators-staging-2087006782.ap-south-1.elb.amazonaws.com",
-                "https://alast.exploremira.com"
+                "https://alast.exploremira.com",
+                "https://p3bww3t3-5174.inc1.devtunnels.ms/"
         ));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowedMethods(List.of(
