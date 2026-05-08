@@ -32,7 +32,7 @@ import {
 } from "@/features/issue/pages";
 import { ProjectKanbanPage } from "@/features/projects/pages/ProjectKanbanPage";
 import { UserDashboardPage } from "@/features/dashboard/pages/UserDashboardPage";
-// import { ProjectsPage } from "@/features/projects/pages/ProjectsPage";
+import { ProjectsPage } from "@/features/projects/pages/ProjectsPage";
 import { ProjectsCreatePage } from "@/features/projects/pages/ProjectsCreatePage";
 import { ProjectsDetailPage } from "@/features/projects/pages/ProjectsDetailPage";
 import { ProjectTeamPage } from "@/features/team/pages";
