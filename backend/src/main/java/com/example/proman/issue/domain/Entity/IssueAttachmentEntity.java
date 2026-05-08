@@ -18,8 +18,11 @@ public class IssueAttachmentEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "file_url", nullable = false, length = 2048)
+    @Column(name = "file_path", nullable = false, length = 2048)
     private String filePath;
+
+    @Column(name = "file_url", nullable = false, length = 2048)
+    private String fileUrl;
 
     @Column(name = "cloudinary_public_id", length = 255)
     private String cloudinaryPublicId;
@@ -42,6 +45,15 @@ public class IssueAttachmentEntity {
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
+
+    public String getFilePath() {
+        return filePath != null ? filePath : fileUrl;
+    }
+
+    public void setFilePath(String filePath) {
+        this.filePath = filePath;
+        this.fileUrl = filePath;
+    }
 
     @PrePersist
     protected void onCreate() {

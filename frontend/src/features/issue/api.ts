@@ -11,7 +11,7 @@ import type {
 
 export async function getProjectIssues(projectId: number) {
   const response = await apiClient.get<Issue[]>(
-    `/v1/issues/project/${projectId}`,
+    `/v1/project/${projectId}/issues`,
   );
   return response.data;
 }
@@ -26,7 +26,7 @@ export async function createProjectIssue(
   payload: IssueCreatePayload,
 ) {
   const response = await apiClient.post<Issue>(
-    `/v1/issues/project/${projectId}`,
+    `/v1/project/${projectId}/issues`,
     payload,
   );
   return response.data;
@@ -78,11 +78,6 @@ export async function uploadIssueAttachment(issueId: number, file: File) {
   const response = await apiClient.post<IssueAttachment>(
     `/v1/issues/${issueId}/attachments`,
     body,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    },
   );
   return response.data;
 }

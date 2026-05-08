@@ -203,16 +203,15 @@ export function IssueCreatePage() {
     setIsSubmitting(true);
     try {
       const issue = await createIssueMutation.mutateAsync(payload);
-      const postCreateTasks: Promise<unknown>[] = attachments.map((file) =>
-        uploadIssueAttachment(issue.id, file),
+      await Promise.all(
+        attachments.map((file) => uploadIssueAttachment(issue.id, file)),
       );
+
       const initialComment = draft.initialComment.trim();
       if (initialComment) {
-        postCreateTasks.push(addIssueComment(issue.id, initialComment));
+        await addIssueComment(issue.id, initialComment);
       }
-      if (postCreateTasks.length > 0) {
-        await Promise.allSettled(postCreateTasks);
-      }
+
       navigate(`/projects/${projectId}/issues/${issue.id}`);
     } catch (error) {
       setValidationError(getApiErrorMessage(error));
