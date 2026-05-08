@@ -16,7 +16,7 @@ public class IssueRequestDTO {
 
     private Long projectId;
 
-    @JsonAlias("assigneeID")
+    @JsonAlias({"assigneeID", "assigneeid"})
     private Long assigneeId;
 
     @NotBlank(message = "Title is required")
