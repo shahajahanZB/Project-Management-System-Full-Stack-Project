@@ -203,6 +203,18 @@ export async function getUserStoriesByProject(projectId: string | number) {
   return response.data.map(normalizeStory);
 }
 
+export async function searchUserStories(
+  projectId: string | number,
+  query: string,
+) {
+  const response = await apiClient.get<unknown[]>(
+    `/v1/user-stories/search?projectId=${encodeURIComponent(
+      String(projectId),
+    )}&query=${encodeURIComponent(query)}`,
+  );
+  return response.data.map(normalizeStory);
+}
+
 export async function getAssignableUsersForProject(projectId: string | number) {
   const response = await apiClient.get<unknown[]>(
     `/v1/user-stories/project/${projectId}/assignable-users`,

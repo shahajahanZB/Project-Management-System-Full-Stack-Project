@@ -74,7 +74,6 @@ export function ProjectKanbanPage() {
   const membersQuery = useProjectMembers(projectId);
   const currentUserQuery = useGetCurrentUser();
   const statusesQuery = useUserStoryStatuses(projectId);
-  const storiesQuery = useUserStoriesByProject(projectId);
   const assignableUsersQuery = useAssignableUsersForProject(projectId);
   const createStatusMutation = useCreateUserStoryStatus(projectId);
   const deleteStatusMutation = useDeleteUserStoryStatus(projectId);
@@ -117,6 +116,8 @@ export function ProjectKanbanPage() {
   const [isAddingColumn, setIsAddingColumn] = useState(false);
   const [columnName, setColumnName] = useState("");
   const [lastAction, setLastAction] = useState<string | null>(null);
+
+  const storiesQuery = useUserStoriesByProject(projectId, query);
 
   useEffect(() => {
     if (!statusesQuery.data || statusesQuery.data.length === 0) return;
@@ -242,24 +243,9 @@ export function ProjectKanbanPage() {
   );
 
   const filteredCards = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-
     return cards.filter((card) => {
       const assignee = card.assigneeId ? userById.get(card.assigneeId) : null;
-      const cardTags = card.tagIds
-        .map((id) => tagById.get(id)?.label ?? "")
-        .join(" ");
-      const haystack = [
-        card.id,
-        card.title,
-        card.description,
-        assignee?.name,
-        cardTags,
-      ]
-        .join(" ")
-        .toLowerCase();
 
-      const matchesQuery = !needle || haystack.includes(needle);
       const matchesStatus =
         statusFilter === "all" || card.columnId === statusFilter;
       const matchesAssignee =
@@ -269,13 +255,12 @@ export function ProjectKanbanPage() {
         card.assigneeId === assigneeFilter;
       const matchesTag = tagFilter === "all" || card.tagIds.includes(tagFilter);
 
-      return matchesQuery && matchesStatus && matchesAssignee && matchesTag;
+      return matchesStatus && matchesAssignee && matchesTag;
     });
   }, [
     assigneeFilter,
     cards,
     currentUserId,
-    query,
     statusFilter,
     tagById,
     tagFilter,
