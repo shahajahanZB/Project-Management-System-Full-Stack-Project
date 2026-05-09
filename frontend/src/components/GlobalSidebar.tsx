@@ -12,8 +12,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { NavLink, useNavigate, useParams } from "react-router-dom";
-import { useGetCurrentUser } from "@/features/auth/hooks";
-import { useProject } from "@/features/projects/hooks";
+import { useGetCurrentUser, useGetUserProfile } from "@/features/auth/hooks";
+import { useProject, useProjects } from "@/features/projects/hooks";
 import { APP_NAME } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
