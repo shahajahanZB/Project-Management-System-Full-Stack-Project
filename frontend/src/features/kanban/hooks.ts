@@ -127,10 +127,19 @@ export function useCreateUserStory(projectId?: string | number) {
 
   return useMutation({
     mutationFn: (payload: CreateUserStoryPayload) => createUserStory(payload),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      console.log("Story created successfully:", variables);
       queryClient.invalidateQueries({
         queryKey: kanbanQueryKeys.stories(projectId),
       });
+      if (variables.epicId) {
+        queryClient.invalidateQueries({
+          queryKey: ["epics", "detail", String(variables.epicId)],
+        });
+      }
+    },
+    onError: (error) => {
+      console.error("Failed to create story:", error);
     },
   });
 }
@@ -147,12 +156,16 @@ export function useUpdateUserStory(projectId?: string | number) {
       payload: UpdateUserStoryPayload;
     }) => updateUserStory(storyId, payload),
     onSuccess: (_data, variables) => {
+      console.log("Update story mutation success, invalidating queries");
       queryClient.invalidateQueries({
         queryKey: kanbanQueryKeys.stories(projectId),
       });
       queryClient.invalidateQueries({
         queryKey: kanbanQueryKeys.story(variables.storyId),
       });
+    },
+    onError: (error) => {
+      console.error("Update story mutation error:", error);
     },
   });
 }
@@ -169,11 +182,22 @@ export function useUpdateUserStoryStatus(projectId?: string | number) {
       payload: UpdateUserStoryStatusPayload;
     }) => updateUserStoryStatus(storyId, payload),
     onSuccess: (_data, variables) => {
+      console.log("useUpdateUserStoryStatus: Status update successful", {
+        storyId: variables.storyId,
+        statusId: variables.payload.statusId,
+      });
       queryClient.invalidateQueries({
         queryKey: kanbanQueryKeys.stories(projectId),
       });
       queryClient.invalidateQueries({
         queryKey: kanbanQueryKeys.story(variables.storyId),
+      });
+    },
+    onError: (error, variables) => {
+      console.error("useUpdateUserStoryStatus: Status update failed", {
+        storyId: variables.storyId,
+        statusId: variables.payload.statusId,
+        error: (error as Error)?.message,
       });
     },
   });
@@ -323,7 +347,8 @@ export function useUpdateUserStoryComment(storyId?: string | number) {
     }: {
       commentId: string | number;
       payload: { comment: string };
-    }) => updateUserStoryComment(storyId as string | number, commentId, payload),
+    }) =>
+      updateUserStoryComment(storyId as string | number, commentId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: kanbanQueryKeys.comments(storyId),
@@ -372,9 +397,13 @@ export function useAddUserStoryAttachment(storyId?: string | number) {
         file,
         metadata,
       ),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      const activeStoryId = variables.storyId ?? storyId;
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.attachments(storyId),
+        queryKey: kanbanQueryKeys.attachments(activeStoryId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: kanbanQueryKeys.story(activeStoryId),
       });
     },
   });
@@ -384,11 +413,21 @@ export function useDeleteUserStoryAttachment(storyId?: string | number) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (attachmentId: string | number) =>
-      deleteUserStoryAttachment(storyId as string | number, attachmentId),
-    onSuccess: () => {
+    mutationFn: (params: {
+      storyId?: string | number;
+      attachmentId: string | number;
+    }) =>
+      deleteUserStoryAttachment(
+        (params.storyId ?? storyId) as string | number,
+        params.attachmentId,
+      ),
+    onSuccess: (_data, variables) => {
+      const activeStoryId = variables.storyId ?? storyId;
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.attachments(storyId),
+        queryKey: kanbanQueryKeys.attachments(activeStoryId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: kanbanQueryKeys.story(activeStoryId),
       });
     },
   });

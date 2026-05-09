@@ -202,3 +202,12 @@ export function useUpdateUserMutation() {
 export function useCreatePermissionsBulkMutation() {
   return useMutation({ mutationFn: createPermissionsBulk });
 }
+
+export function useHasPermission(permission: string) {
+  const { data: user } = useGetCurrentUser();
+  if (!user) return false;
+  
+  // Check if user has the permission directly or via roles
+  const permissions = user.permissions ?? [];
+  return permissions.includes(permission);
+}

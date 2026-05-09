@@ -8,10 +8,15 @@ import {
   type FormEvent,
 } from "react";
 import { useParams } from "react-router-dom";
-import { useGetCurrentUser } from "@/features/auth/hooks";
+import { useGetCurrentUser, useHasPermission } from "@/features/auth/hooks";
 import { useProject, useProjectMembers } from "@/features/projects/hooks";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { COLUMN_COLORS, DEFAULT_COLUMNS, DEFAULT_TAGS, TAG_COLORS } from "../constants";
+import {
+  COLUMN_COLORS,
+  DEFAULT_COLUMNS,
+  DEFAULT_TAGS,
+  TAG_COLORS,
+} from "../constants";
 import {
   useAddTagToStory,
   useAddUserStoryAttachment,
@@ -19,20 +24,22 @@ import {
   useAssignUsersToStory,
   useCreateUserStory,
   useCreateUserStoryStatus,
+  useDeleteUserStoryAttachment,
   useDeleteUserStoryStatus,
   useRemoveTagFromStory,
   useRemoveUsersFromStory,
   useUpdateUserStory,
   useUpdateUserStoryStatus,
+  useUpdateUserStoryTiming,
   useUserStoriesByProject,
   useUserStoryStatuses,
 } from "../hooks";
 import type {
   CardModalState,
+  KanbanAttachment,
   KanbanCard,
   KanbanColumn,
   KanbanDraft,
-  KanbanPointKey,
   KanbanTag,
   KanbanUser,
   StoryAssigneeSync,
@@ -51,9 +58,13 @@ import {
   seedCards,
   slugify,
   toUser,
-  totalPoints,
 } from "../utils";
-import { AddColumnForm, CardModal, KanbanBoardColumn, KanbanBoardHeader } from "../components";
+import {
+  AddColumnForm,
+  CardModal,
+  KanbanBoardColumn,
+  KanbanBoardHeader,
+} from "../components";
 
 export function ProjectKanbanPage() {
   useDocumentTitle("Kanban");
@@ -70,11 +81,13 @@ export function ProjectKanbanPage() {
   const createStoryMutation = useCreateUserStory(projectId);
   const updateStoryMutation = useUpdateUserStory(projectId);
   const updateStoryStatusMutation = useUpdateUserStoryStatus(projectId);
+  const updateStoryTimingMutation = useUpdateUserStoryTiming();
   const assignUsersMutation = useAssignUsersToStory(projectId);
   const removeUsersMutation = useRemoveUsersFromStory(projectId);
   const addTagMutation = useAddTagToStory(projectId);
   const removeTagMutation = useRemoveTagFromStory(projectId);
   const addAttachmentMutation = useAddUserStoryAttachment();
+  const deleteAttachmentMutation = useDeleteUserStoryAttachment();
 
   const storageKey = `kanban-board:${projectId ?? "workspace"}`;
   const storedBoard = useMemo(() => loadStoredBoard(storageKey), [storageKey]);
@@ -94,6 +107,9 @@ export function ProjectKanbanPage() {
   const [tagFilter, setTagFilter] = useState("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [modalState, setModalState] = useState<CardModalState | null>(null);
+  const [deletedAttachmentIds, setDeletedAttachmentIds] = useState<
+    (string | number)[]
+  >([]);
   const [tagInput, setTagInput] = useState("");
   const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
   const [draggingColumnId, setDraggingColumnId] = useState<string | null>(null);
@@ -212,6 +228,7 @@ export function ProjectKanbanPage() {
         ];
   }, [assignableUsersQuery.data, currentUserQuery.data, membersQuery.data]);
 
+  const canManageStories = useHasPermission("STORY_MANAGE");
   const currentUserId = currentUserQuery.data?.id
     ? String(currentUserQuery.data.id)
     : "demo-me";
@@ -277,7 +294,6 @@ export function ProjectKanbanPage() {
   const boardTotals = useMemo(() => {
     return {
       cards: cards.length,
-      points: cards.reduce((sum, card) => sum + totalPoints(card.points), 0),
       assigned: cards.filter((card) => card.assigneeId).length,
     };
   }, [cards]);
@@ -293,7 +309,7 @@ export function ProjectKanbanPage() {
     addAttachmentMutation.isPending;
 
   const modalCommentCount = modalState?.cardId
-    ? cards.find((card) => card.id === modalState.cardId)?.commentCount ?? 0
+    ? (cards.find((card) => card.id === modalState.cardId)?.commentCount ?? 0)
     : 0;
 
   const handleCommentCountChange = useCallback(
@@ -334,7 +350,7 @@ export function ProjectKanbanPage() {
         columnId: card.columnId,
         assigneeId: card.assigneeId,
         tagIds: card.tagIds,
-        points: { ...card.points },
+        endDate: card.endDate ?? null,
         attachments: card.attachments,
       },
     });
@@ -346,24 +362,6 @@ export function ProjectKanbanPage() {
         ? {
             ...current,
             draft: { ...current.draft, ...partial },
-          }
-        : current,
-    );
-  }
-
-  function updateDraftPoints(key: KanbanPointKey, value: string) {
-    const nextValue = Math.max(0, Number(value) || 0);
-    setModalState((current) =>
-      current
-        ? {
-            ...current,
-            draft: {
-              ...current.draft,
-              points: {
-                ...current.draft.points,
-                [key]: nextValue,
-              },
-            },
           }
         : current,
     );
@@ -437,19 +435,31 @@ export function ProjectKanbanPage() {
   }
 
   function removeAttachment(attachmentId: string) {
-    setModalState((current) =>
-      current
-        ? {
-            ...current,
-            draft: {
-              ...current.draft,
-              attachments: current.draft.attachments.filter(
-                (attachment) => attachment.id !== attachmentId,
-              ),
-            },
-          }
-        : current,
-    );
+    setModalState((current) => {
+      if (!current) return current;
+
+      const attachment = current.draft.attachments.find(
+        (att) => att.id === attachmentId,
+      );
+
+      // Track deletion of existing attachments (those with attachmentId)
+      if (attachment?.attachmentId) {
+        setDeletedAttachmentIds((prev) => [
+          ...prev,
+          attachment.attachmentId as number,
+        ]);
+      }
+
+      return {
+        ...current,
+        draft: {
+          ...current.draft,
+          attachments: current.draft.attachments.filter(
+            (attachment) => attachment.id !== attachmentId,
+          ),
+        },
+      };
+    });
   }
 
   function userIdPayload(userId: string | null) {
@@ -466,10 +476,7 @@ export function ProjectKanbanPage() {
     const previousUserIds = userIdPayload(previousAssigneeId);
     const nextUserIds = userIdPayload(nextAssigneeId);
 
-    if (
-      previousUserIds.length > 0 &&
-      previousAssigneeId !== nextAssigneeId
-    ) {
+    if (previousUserIds.length > 0 && previousAssigneeId !== nextAssigneeId) {
       await removeUsersMutation.mutateAsync({
         storyId,
         payload: { userIds: previousUserIds },
@@ -517,20 +524,45 @@ export function ProjectKanbanPage() {
     }
   }
 
-  async function uploadPendingAttachments(storyId: number, draft: KanbanDraft) {
+  async function uploadPendingAttachments(
+    storyId: number,
+    draft: KanbanDraft,
+  ): Promise<KanbanAttachment[]> {
+    const existingAttachments = draft.attachments.filter(
+      (attachment) => !attachment.file,
+    );
+
+    // Delete removed attachments
+    for (const attachmentId of deletedAttachmentIds) {
+      try {
+        await deleteAttachmentMutation.mutateAsync({
+          storyId,
+          attachmentId,
+        });
+      } catch (error) {
+        console.error("Failed to delete attachment", error);
+      }
+    }
+    setDeletedAttachmentIds([]);
+
+    // Upload new attachments
     const pendingAttachments = draft.attachments.filter(
       (attachment) => attachment.file,
     );
+    const uploadedAttachments: KanbanAttachment[] = [];
 
     for (const attachment of pendingAttachments) {
       if (attachment.file) {
-        await addAttachmentMutation.mutateAsync({
+        const uploadedAttachment = await addAttachmentMutation.mutateAsync({
           storyId,
           file: attachment.file,
           metadata: { description: attachment.name },
         });
+        uploadedAttachments.push(uploadedAttachment);
       }
     }
+
+    return [...existingAttachments, ...uploadedAttachments];
   }
 
   async function handleModalSubmit(event: FormEvent<HTMLFormElement>) {
@@ -544,6 +576,7 @@ export function ProjectKanbanPage() {
 
     if (modalState.mode === "edit" && modalState.cardId) {
       const previousCard = cards.find((card) => card.id === modalState.cardId);
+      let syncedAttachments = modalState.draft.attachments;
 
       if (previousCard?.storyId) {
         try {
@@ -561,6 +594,14 @@ export function ProjectKanbanPage() {
               payload: { statusId },
             });
           }
+          if (modalState.draft.endDate !== previousCard.endDate) {
+            await updateStoryTimingMutation.mutateAsync({
+              storyId: previousCard.storyId,
+              payload: {
+                endDate: modalState.draft.endDate ?? new Date().toISOString(),
+              },
+            });
+          }
           await syncStoryAssignee({
             storyId: previousCard.storyId,
             previousAssigneeId: previousCard.assigneeId,
@@ -571,7 +612,10 @@ export function ProjectKanbanPage() {
             previousTagIds: previousCard.tagIds,
             nextTagIds: modalState.draft.tagIds,
           });
-          await uploadPendingAttachments(previousCard.storyId, modalState.draft);
+          syncedAttachments = await uploadPendingAttachments(
+            previousCard.storyId,
+            modalState.draft,
+          );
         } catch (error) {
           setLastAction((error as Error)?.message || "Could not update story");
           return;
@@ -585,8 +629,9 @@ export function ProjectKanbanPage() {
                 ...card,
                 ...modalState.draft,
                 title: modalState.draft.title.trim(),
+                attachments: syncedAttachments,
                 statusId,
-                attachmentCount: modalState.draft.attachments.length,
+                attachmentCount: syncedAttachments.length,
                 updatedAt: new Date().toISOString(),
               }
             : card,
@@ -595,6 +640,7 @@ export function ProjectKanbanPage() {
       setLastAction(`Updated ${modalState.cardId}`);
     } else {
       let createdStoryId: number | undefined;
+      let syncedAttachments = modalState.draft.attachments;
       if (Number.isFinite(projectNumber) && projectNumber > 0) {
         try {
           const created = await createStoryMutation.mutateAsync({
@@ -605,6 +651,12 @@ export function ProjectKanbanPage() {
             description: modalState.draft.description,
           });
           createdStoryId = created.id;
+          if (modalState.draft.endDate) {
+            await updateStoryTimingMutation.mutateAsync({
+              storyId: created.id,
+              payload: { endDate: modalState.draft.endDate },
+            });
+          }
           await syncStoryAssignee({
             storyId: created.id,
             previousAssigneeId: null,
@@ -615,7 +667,10 @@ export function ProjectKanbanPage() {
             previousTagIds: [],
             nextTagIds: modalState.draft.tagIds,
           });
-          await uploadPendingAttachments(created.id, modalState.draft);
+          syncedAttachments = await uploadPendingAttachments(
+            created.id,
+            modalState.draft,
+          );
         } catch (error) {
           setLastAction((error as Error)?.message || "Could not create story");
           return;
@@ -629,7 +684,8 @@ export function ProjectKanbanPage() {
         statusId,
         ...modalState.draft,
         title: modalState.draft.title.trim(),
-        attachmentCount: modalState.draft.attachments.length,
+        attachments: syncedAttachments,
+        attachmentCount: syncedAttachments.length,
         commentCount: 0,
         updatedAt: new Date().toISOString(),
       };
@@ -682,6 +738,7 @@ export function ProjectKanbanPage() {
       const updatedCard = {
         ...movingCard,
         columnId,
+        statusId: targetColumn?.statusId ?? movingCard.statusId,
         updatedAt: new Date().toISOString(),
       };
       const beforeIndex = beforeCardId
@@ -705,11 +762,20 @@ export function ProjectKanbanPage() {
       previousCard.statusId !== targetColumn.statusId
     ) {
       try {
-        await updateStoryStatusMutation.mutateAsync({
+        console.log("Drag-drop: Updating story status", {
+          storyId: previousCard.storyId,
+          oldStatusId: previousCard.statusId,
+          newStatusId: targetColumn.statusId,
+        });
+
+        const result = await updateStoryStatusMutation.mutateAsync({
           storyId: previousCard.storyId,
           payload: { statusId: targetColumn.statusId },
         });
+
+        console.log("Drag-drop: Status update successful", result);
       } catch (error) {
+        console.error("Drag-drop: Status update failed, rolling back", error);
         setCards(previousCards);
         setLastAction((error as Error)?.message || "Could not update status");
         return;
@@ -723,7 +789,10 @@ export function ProjectKanbanPage() {
     }
   }
 
-  function handleColumnDrop(event: DragEvent<HTMLDivElement>, columnId: string) {
+  function handleColumnDrop(
+    event: DragEvent<HTMLDivElement>,
+    columnId: string,
+  ) {
     event.preventDefault();
     const payload = readDragPayload(event);
     if (!payload) return;
@@ -746,7 +815,11 @@ export function ProjectKanbanPage() {
     event.preventDefault();
     event.stopPropagation();
     const payload = readDragPayload(event);
-    if (!payload || payload.type !== "card" || payload.cardId === targetCard.id) {
+    if (
+      !payload ||
+      payload.type !== "card" ||
+      payload.cardId === targetCard.id
+    ) {
       return;
     }
     void moveCardToColumn(payload.cardId, targetCard.columnId, targetCard.id);
@@ -855,7 +928,8 @@ export function ProjectKanbanPage() {
         onTagFilterChange={setTagFilter}
         onToggleFilters={() => setFiltersOpen((value) => !value)}
         onToggleAddColumn={() => setIsAddingColumn((value) => !value)}
-        onCreateStory={() => openCreateModal()}
+        onNewStory={() => openCreateModal()}
+        canCreateStory={canManageStories}
       />
 
       <div className="overflow-x-auto px-4 py-5 lg:px-8">
@@ -892,7 +966,6 @@ export function ProjectKanbanPage() {
                   setActiveColumnId(null);
                 }}
                 onCardDrop={handleCardDrop}
-                onCreateStory={openCreateModal}
                 onDeleteColumn={handleDeleteColumn}
                 onEditCard={openEditModal}
               />
@@ -934,7 +1007,6 @@ export function ProjectKanbanPage() {
           onClose={() => setModalState(null)}
           onSubmit={handleModalSubmit}
           onDraftChange={updateDraft}
-          onPointChange={updateDraftPoints}
           onCreateTag={handleCreateTag}
           onAddTag={addTagToDraft}
           onRemoveTag={removeTagFromDraft}

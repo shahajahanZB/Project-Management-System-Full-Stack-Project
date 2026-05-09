@@ -128,7 +128,9 @@ function normalizeStory(value: unknown): UserStory {
     : Array.isArray(record.tagNames)
       ? record.tagNames
       : [];
-  const attachments = Array.isArray(record.attachments) ? record.attachments : [];
+  const attachments = Array.isArray(record.attachments)
+    ? record.attachments
+    : [];
 
   return {
     id,
@@ -143,6 +145,7 @@ function normalizeStory(value: unknown): UserStory {
     attachmentCount: asNumber(record.attachmentCount),
     commentCount: asNumber(record.commentCount),
     activityCount: asNumber(record.activityCount),
+    endDate: record.endDate ? String(record.endDate) : null,
     updatedAt: record.updatedAt
       ? String(record.updatedAt)
       : record.modifiedDate
@@ -165,7 +168,9 @@ export async function createUserStoryStatus(
   return normalizeStatus(response.data);
 }
 
-export async function getUserStoryStatusesByProject(projectId: string | number) {
+export async function getUserStoryStatusesByProject(
+  projectId: string | number,
+) {
   const response = await apiClient.get<StatusResponse[]>(
     `/v1/user-story-statuses/project/${projectId}`,
   );
@@ -180,8 +185,15 @@ export async function deleteUserStoryStatus(statusId: string | number) {
 }
 
 export async function createUserStory(payload: CreateUserStoryPayload) {
-  const response = await apiClient.post<unknown>("/v1/user-stories", payload);
-  return normalizeStory(response.data);
+  console.log("API: Creating user story with payload:", payload);
+  try {
+    const response = await apiClient.post<unknown>("/v1/user-stories", payload);
+    console.log("API: Story created successfully:", response.data);
+    return normalizeStory(response.data);
+  } catch (error) {
+    console.error("API: Failed to create user story:", error);
+    throw error;
+  }
 }
 
 export async function getUserStoriesByProject(projectId: string | number) {
@@ -214,22 +226,37 @@ export async function updateUserStory(
   storyId: string | number,
   payload: UpdateUserStoryPayload,
 ) {
-  const response = await apiClient.patch<unknown>(
-    `/v1/user-stories/${storyId}`,
-    payload,
-  );
-  return normalizeStory(response.data);
+  console.log("API: updateUserStory", { storyId, payload });
+  try {
+    const response = await apiClient.patch<unknown>(
+      `/v1/user-stories/${storyId}`,
+      payload,
+    );
+    console.log("API: updateUserStory response", response.data);
+    const normalized = normalizeStory(response.data);
+    console.log("API: updateUserStory normalized", normalized);
+    return normalized;
+  } catch (error) {
+    console.error("API: updateUserStory error", error);
+    throw error;
+  }
 }
 
 export async function updateUserStoryStatus(
   storyId: string | number,
   payload: UpdateUserStoryStatusPayload,
 ) {
+  console.log("API: Updating user story status", { storyId, payload });
   const response = await apiClient.patch<unknown>(
     `/v1/user-stories/${storyId}/status`,
     payload,
   );
-  return normalizeStory(response.data);
+  const normalizedData = normalizeStory(response.data);
+  console.log("API: User story status update response", {
+    storyId,
+    normalizedData,
+  });
+  return normalizedData;
 }
 
 export async function updateUserStoryTiming(
@@ -355,12 +382,14 @@ export async function addUserStoryAttachment(
 ) {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("metadata", JSON.stringify(metadata));
+  formData.append(
+    "metadata",
+    new Blob([JSON.stringify(metadata)], { type: "application/json" }),
+  );
 
   const response = await apiClient.post<unknown>(
     `/v1/user-stories/${storyId}/attachments`,
     formData,
-    { headers: { "Content-Type": "multipart/form-data" } },
   );
   return normalizeAttachment(response.data, 0);
 }

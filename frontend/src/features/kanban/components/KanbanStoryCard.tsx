@@ -1,5 +1,6 @@
 import type { DragEvent } from "react";
 import {
+  CalendarDays,
   CircleUserRound,
   GripVertical,
   MessageSquare,
@@ -8,7 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { KanbanCard, KanbanTag, KanbanUser } from "../types";
-import { initials, totalPoints } from "../utils";
+import { initials } from "../utils";
 
 type KanbanStoryCardProps = {
   card: KanbanCard;
@@ -114,9 +115,12 @@ export function KanbanStoryCard({
             Unassigned
           </span>
         )}
-        <span className="rounded bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700">
-          {totalPoints(card.points)} pts
-        </span>
+        {card.endDate && (
+          <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
+            <CalendarDays className="size-3.5" />
+            {new Date(card.endDate).toLocaleDateString()}
+          </span>
+        )}
       </div>
 
       <div className="mt-3 flex items-center gap-1 text-slate-300">
