@@ -15,6 +15,8 @@ import type {
   Role,
   SignUpPayload,
   User,
+  UserProfile,
+  UserProfileUpdatePayload,
 } from "./types";
 
 // ============================================================================
@@ -64,6 +66,24 @@ export async function getCurrentUser() {
 
 export async function getAllUsers() {
   const response = await apiClient.get<User[]>("/v1/iam/users");
+  return response.data;
+}
+
+export async function getUserProfile(userId: number) {
+  const response = await apiClient.get<UserProfile>(
+    `/v1/iam/users/${userId}/profile`,
+  );
+  return response.data;
+}
+
+export async function updateUserProfile(
+  userId: number,
+  payload: UserProfileUpdatePayload,
+) {
+  const response = await apiClient.patch<UserProfile>(
+    `/v1/iam/users/${userId}/profile`,
+    payload,
+  );
   return response.data;
 }
 

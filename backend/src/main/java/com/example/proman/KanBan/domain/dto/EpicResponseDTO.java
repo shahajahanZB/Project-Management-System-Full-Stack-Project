@@ -4,6 +4,7 @@ import com.example.proman.KanBan.domain.Entity.enums.EpicStatus;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
 import java.util.Set;
 
 @Getter
@@ -16,4 +17,5 @@ public class EpicResponseDTO {
     private EpicStatus status;
     private Integer progress;
     private Set<Long> assignedUserIds;
+    private List<EpicUserStoryResponseDTO> userStories;
 }

@@ -12,6 +12,8 @@ public interface UserStoryService {
 
     List<UserStoryResponseDTO> getUserStoriesByProject(Long projectId);
 
+    List<UserStoryResponseDTO> searchUserStoriesByProject(Long projectId, String query);
+
     List<UserStoryResponseDTO> getUserStoriesByEpic(Long epicId);
 
     List<UserRoleResponseDTO> getAssignableUsersByProject(Long projectId);

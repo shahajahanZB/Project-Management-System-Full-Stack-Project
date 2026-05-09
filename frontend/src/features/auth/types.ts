@@ -28,12 +28,38 @@ export type AuthSession = {
 };
 
 // User Types
+export type UserProfile = {
+  id?: number;
+  fullName?: string;
+  jobTitle?: string;
+  department?: string;
+  employeeCode?: string;
+  location?: string;
+  avatarUrl?: string;
+  phoneNumber?: string;
+  githubUsername?: string;
+  bio?: string;
+};
+
 export type User = {
   id: number;
   username: string;
   email: string;
   roles?: Role[];
   permissions?: string[];
+  profile?: UserProfile;
+};
+
+export type UserProfileUpdatePayload = {
+  fullName?: string;
+  jobTitle?: string;
+  department?: string;
+  employeeCode?: string;
+  location?: string;
+  avatarUrl?: string;
+  phoneNumber?: string;
+  githubUsername?: string;
+  bio?: string;
 };
 
 export type AssignRolesPayload = {

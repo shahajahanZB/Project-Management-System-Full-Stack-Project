@@ -41,7 +41,23 @@ function asNumber(value: unknown) {
   return Number.isFinite(numberValue) ? numberValue : undefined;
 }
 
+function slugifyValue(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
 function normalizeUser(value: unknown, index: number): KanbanUser {
+  if (typeof value === "string" || typeof value === "number") {
+    return {
+      id: String(value),
+      name: `User ${value}`,
+      avatarColor: "bg-slate-700",
+    };
+  }
+
   const record = asRecord(value);
   const id = String(record.id ?? record.userId ?? index);
   const name = String(
@@ -59,7 +75,7 @@ function normalizeUser(value: unknown, index: number): KanbanUser {
 function normalizeTag(value: unknown, index: number): KanbanTag {
   if (typeof value === "string") {
     return {
-      id: value,
+      id: slugifyValue(value) || value,
       label: value,
       color: "bg-slate-100 text-slate-700 ring-slate-200",
     };
@@ -67,8 +83,9 @@ function normalizeTag(value: unknown, index: number): KanbanTag {
 
   const record = asRecord(value);
   const label = String(record.name ?? record.label ?? `Tag ${index + 1}`);
+  const id = String(record.id ?? record.name ?? record.label ?? label);
   return {
-    id: String(record.id ?? record.name ?? record.label ?? label),
+    id: slugifyValue(id) || id,
     label,
     color: "bg-slate-100 text-slate-700 ring-slate-200",
   };
@@ -80,8 +97,13 @@ function normalizeAttachment(value: unknown, index: number): KanbanAttachment {
   return {
     id: String(attachmentId ?? record.id ?? record.attachmentId ?? index),
     attachmentId,
-    name: String(record.fileName ?? record.name ?? `Attachment ${index + 1}`),
-    size: Number(record.size ?? record.fileSize ?? 0),
+    name: String(
+      record.originalFileName ??
+        record.fileName ??
+        record.name ??
+        `Attachment ${index + 1}`,
+    ),
+    size: Number(record.fileSizeBytes ?? record.size ?? record.fileSize ?? 0),
   };
 }
 
@@ -98,8 +120,14 @@ function normalizeStory(value: unknown): UserStory {
     ? record.assignees
     : Array.isArray(record.users)
       ? record.users
+      : Array.isArray(record.assignedUserIds)
+        ? record.assignedUserIds
+        : [];
+  const tags = Array.isArray(record.tags)
+    ? record.tags
+    : Array.isArray(record.tagNames)
+      ? record.tagNames
       : [];
-  const tags = Array.isArray(record.tags) ? record.tags : [];
   const attachments = Array.isArray(record.attachments)
     ? record.attachments
     : [];
@@ -114,7 +142,19 @@ function normalizeStory(value: unknown): UserStory {
     assignees: assignees.map(normalizeUser),
     tags: tags.map(normalizeTag),
     attachments: attachments.map(normalizeAttachment),
-    updatedAt: record.updatedAt ? String(record.updatedAt) : undefined,
+    attachmentCount: asNumber(record.attachmentCount),
+    commentCount: asNumber(record.commentCount),
+    activityCount: asNumber(record.activityCount),
+    endDate: record.endDate ? String(record.endDate) : null,
+    updatedAt: record.updatedAt
+      ? String(record.updatedAt)
+      : record.modifiedDate
+        ? String(record.modifiedDate)
+        : record.modifiedAt
+          ? String(record.modifiedAt)
+          : record.createdDate
+            ? String(record.createdDate)
+            : undefined,
   };
 }
 
@@ -128,7 +168,9 @@ export async function createUserStoryStatus(
   return normalizeStatus(response.data);
 }
 
-export async function getUserStoryStatusesByProject(projectId: string | number) {
+export async function getUserStoryStatusesByProject(
+  projectId: string | number,
+) {
   const response = await apiClient.get<StatusResponse[]>(
     `/v1/user-story-statuses/project/${projectId}`,
   );
@@ -143,8 +185,15 @@ export async function deleteUserStoryStatus(statusId: string | number) {
 }
 
 export async function createUserStory(payload: CreateUserStoryPayload) {
-  const response = await apiClient.post<unknown>("/v1/user-stories", payload);
-  return normalizeStory(response.data);
+  console.log("API: Creating user story with payload:", payload);
+  try {
+    const response = await apiClient.post<unknown>("/v1/user-stories", payload);
+    console.log("API: Story created successfully:", response.data);
+    return normalizeStory(response.data);
+  } catch (error) {
+    console.error("API: Failed to create user story:", error);
+    throw error;
+  }
 }
 
 export async function getUserStoriesByProject(projectId: string | number) {
@@ -177,22 +226,37 @@ export async function updateUserStory(
   storyId: string | number,
   payload: UpdateUserStoryPayload,
 ) {
-  const response = await apiClient.patch<unknown>(
-    `/v1/user-stories/${storyId}`,
-    payload,
-  );
-  return normalizeStory(response.data);
+  console.log("API: updateUserStory", { storyId, payload });
+  try {
+    const response = await apiClient.patch<unknown>(
+      `/v1/user-stories/${storyId}`,
+      payload,
+    );
+    console.log("API: updateUserStory response", response.data);
+    const normalized = normalizeStory(response.data);
+    console.log("API: updateUserStory normalized", normalized);
+    return normalized;
+  } catch (error) {
+    console.error("API: updateUserStory error", error);
+    throw error;
+  }
 }
 
 export async function updateUserStoryStatus(
   storyId: string | number,
   payload: UpdateUserStoryStatusPayload,
 ) {
+  console.log("API: Updating user story status", { storyId, payload });
   const response = await apiClient.patch<unknown>(
     `/v1/user-stories/${storyId}/status`,
     payload,
   );
-  return normalizeStory(response.data);
+  const normalizedData = normalizeStory(response.data);
+  console.log("API: User story status update response", {
+    storyId,
+    normalizedData,
+  });
+  return normalizedData;
 }
 
 export async function updateUserStoryTiming(
@@ -318,12 +382,14 @@ export async function addUserStoryAttachment(
 ) {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("metadata", JSON.stringify(metadata));
+  formData.append(
+    "metadata",
+    new Blob([JSON.stringify(metadata)], { type: "application/json" }),
+  );
 
   const response = await apiClient.post<unknown>(
     `/v1/user-stories/${storyId}/attachments`,
     formData,
-    { headers: { "Content-Type": "multipart/form-data" } },
   );
   return normalizeAttachment(response.data, 0);
 }

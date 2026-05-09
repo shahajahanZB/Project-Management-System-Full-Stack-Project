@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
@@ -9,7 +9,8 @@ import {
   useRemoveEpicUsers,
   useAssignableUsersForEpic,
 } from "../hooks";
-import { useGetAllUsers } from "@/features/auth/hooks";
+import { useGetAllUsers, useHasPermission } from "@/features/auth/hooks";
+import { useCreateUserStory } from "@/features/kanban/hooks";
 
 export function EpicDetailPage() {
   useDocumentTitle("Epic Detail");
@@ -24,9 +25,15 @@ export function EpicDetailPage() {
   const usersQuery = useGetAllUsers();
   const assignUsers = useAssignEpicUsers();
   const removeUsers = useRemoveEpicUsers();
+  const createStoryMutation = useCreateUserStory(projectId);
+  const canManageStories = useHasPermission("STORY_MANAGE");
 
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<number[]>([]);
+  const [storiesOpen, setStoriesOpen] = useState(true);
+  const [showCreateStory, setShowCreateStory] = useState(false);
+  const [storyTitle, setStoryTitle] = useState("");
+  const [storyDescription, setStoryDescription] = useState("");
 
   const assignedUserIds = epicQuery.data?.assignedUserIds ?? [];
   const allUsers = usersQuery.data ?? [];
@@ -36,12 +43,11 @@ export function EpicDetailPage() {
     const q = query.trim().toLowerCase();
     const candidates = assignableUsers;
     if (!q) return candidates;
-    return candidates
-      .filter(
-        (u) =>
-          String(u.username).toLowerCase().includes(q) ||
-          String(u.email).toLowerCase().includes(q),
-      );
+    return candidates.filter(
+      (u) =>
+        String(u.username).toLowerCase().includes(q) ||
+        String(u.email).toLowerCase().includes(q),
+    );
   }, [assignableUsers, query]);
 
   function toggleSelect(id: number) {
@@ -73,6 +79,24 @@ export function EpicDetailPage() {
       });
     } catch (err) {
       console.error("Failed to remove user:", err);
+    }
+  }
+
+  async function handleCreateStory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!storyTitle.trim() || !projectId) return;
+    try {
+      await createStoryMutation.mutateAsync({
+        projectId: Number(projectId),
+        title: storyTitle.trim(),
+        description: storyDescription.trim(),
+        epicId: Number(epicId),
+      });
+      setStoryTitle("");
+      setStoryDescription("");
+      setShowCreateStory(false);
+    } catch (err) {
+      console.error("Failed to create story:", err);
     }
   }
 
@@ -164,7 +188,119 @@ export function EpicDetailPage() {
             </div>
           </div>
 
-          {/* Assignments */}
+          {/* User Stories */}
+          {epic.userStories && epic.userStories.length > 0 && (
+            <div className="rounded-lg border bg-white p-6">
+              <button
+                onClick={() => setStoriesOpen(!storiesOpen)}
+                className="w-full flex items-center justify-between mb-4"
+              >
+                <h3 className="text-sm font-semibold text-slate-950">
+                  User Stories ({epic.userStories.length})
+                </h3>
+                <ChevronDown
+                  className={`size-4 transition-transform ${
+                    storiesOpen ? "rotate-0" : "-rotate-90"
+                  }`}
+                />
+              </button>
+
+              {storiesOpen && (
+                <div className="space-y-2">
+                  {epic.userStories.map((story) => (
+                    <div
+                      key={story.id}
+                      className="flex items-center justify-between gap-3 rounded px-3 py-2 hover:bg-slate-50"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-slate-900">
+                          #{story.id} {story.name}
+                        </div>
+                        {story.endDate && (
+                          <div className="text-xs text-slate-500">
+                            Due: {new Date(story.endDate).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                      <span
+                        className={`inline-block rounded px-2 py-1 text-xs font-semibold whitespace-nowrap ${
+                          {
+                            DONE: "bg-green-100 text-green-800",
+                            IN_PROGRESS: "bg-yellow-100 text-yellow-800",
+                            TODO: "bg-slate-100 text-slate-800",
+                            IN_REVIEW: "bg-blue-100 text-blue-800",
+                          }[story.status] || "bg-slate-100 text-slate-800"
+                        }`}
+                      >
+                        {story.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Create Story */}
+          {canManageStories && (
+            <div className="rounded-lg border bg-white p-6">
+              <h3 className="mb-4 text-sm font-semibold text-slate-950">
+                Create Story
+              </h3>
+              {showCreateStory ? (
+                <form onSubmit={handleCreateStory} className="space-y-3">
+                  <input
+                    type="text"
+                    value={storyTitle}
+                    onChange={(e) => setStoryTitle(e.target.value)}
+                    placeholder="Story title"
+                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    autoFocus
+                  />
+                  <textarea
+                    value={storyDescription}
+                    onChange={(e) => setStoryDescription(e.target.value)}
+                    placeholder="Story description"
+                    rows={3}
+                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="submit"
+                      disabled={
+                        !storyTitle.trim() || createStoryMutation.isPending
+                      }
+                      className="flex-1 bg-indigo-600 text-white hover:bg-indigo-700"
+                    >
+                      {createStoryMutation.isPending
+                        ? "Creating…"
+                        : "Create Story"}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setShowCreateStory(false);
+                        setStoryTitle("");
+                        setStoryDescription("");
+                      }}
+                      variant="secondary"
+                      disabled={createStoryMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <Button
+                  onClick={() => setShowCreateStory(true)}
+                  className="w-full bg-indigo-600 text-white hover:bg-indigo-700"
+                >
+                  <Plus className="size-4" />
+                  New Story
+                </Button>
+              )}
+            </div>
+          )}
           <div className="rounded-lg border bg-white p-6">
             <h3 className="mb-4 text-sm font-semibold text-slate-950">
               Assigned Users

@@ -187,17 +187,17 @@ export function IssueCreatePage() {
     }
 
     const payload: IssueCreatePayload = {
-      assigneeId: draft.assigneeId ? Number(draft.assigneeId) : null,
       title: draft.title.trim(),
       description: draft.description.trim(),
-      dueDate: draft.dueDate,
-      isBlocked: draft.isBlocked,
       status: draft.status,
       type: draft.type,
       severity: draft.severity,
       priority: draft.priority,
-      tagIds: draft.tags.map((tag) => tag.id),
-      watcherIds: draft.watcherIds,
+      ...(draft.assigneeId ? { assigneeId: Number(draft.assigneeId) } : {}),
+      ...(draft.dueDate ? { dueDate: draft.dueDate } : {}),
+      ...(draft.isBlocked ? { isBlocked: draft.isBlocked } : {}),
+      ...(draft.tags.length > 0 ? { tagIds: draft.tags.map((tag) => tag.id) } : {}),
+      ...(draft.watcherIds.length > 0 ? { watcherIds: draft.watcherIds } : {}),
     };
 
     setIsSubmitting(true);
@@ -212,7 +212,7 @@ export function IssueCreatePage() {
         await addIssueComment(issue.id, initialComment);
       }
 
-      navigate(`/projects/${projectId}/issues/${issue.id}`);
+      navigate(`/projects/${projectId}/issues`);
     } catch (error) {
       setValidationError(getApiErrorMessage(error));
       setIsSubmitting(false);

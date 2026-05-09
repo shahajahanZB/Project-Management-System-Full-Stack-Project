@@ -31,9 +31,11 @@ import {
   IssueListPage,
 } from "@/features/issue/pages";
 import { ProjectKanbanPage } from "@/features/projects/pages/ProjectKanbanPage";
+import { UserStoryDetailPage } from "@/features/kanban/pages/UserStoryDetailPage";
+import { UserDashboardPage } from "@/features/dashboard/pages/UserDashboardPage";
+import { ProjectsPage } from "@/features/projects/pages/ProjectsPage";
 import { ProjectsCreatePage } from "@/features/projects/pages/ProjectsCreatePage";
 import { ProjectsDetailPage } from "@/features/projects/pages/ProjectsDetailPage";
-import { ProjectsPage } from "@/features/projects/pages/ProjectsPage";
 import { ProjectTeamPage } from "@/features/team/pages";
 import { TasksPage } from "@/features/tasks/pages/TasksPage";
 import { UsersPage } from "@/features/users/pages/UsersPage";
@@ -44,7 +46,7 @@ import { NotFoundPage } from "@/pages/NotFoundPage";
 function ProjectDetailLayout() {
   const { projectId } = useParams<{ projectId: string }>();
 
-  if (!projectId) return <Navigate to="/projects" replace />;
+  if (!projectId) return <Navigate to="/dashboard" replace />;
 
   return (
     <ProjectProvider projectId={projectId}>
@@ -54,7 +56,8 @@ function ProjectDetailLayout() {
 }
 
 function isAdminRole(role: unknown) {
-  const name = typeof role === "string" ? role : (role as { name?: string })?.name;
+  const name =
+    typeof role === "string" ? role : (role as { name?: string })?.name;
   return ["ADMIN", "ROLE_ADMIN", "SUPERADMIN", "ROLE_SUPERADMIN"].includes(
     name ?? "",
   );
@@ -69,7 +72,7 @@ function HomeRedirect() {
   return roles.some(isAdminRole) ? (
     <Navigate to="/admin" replace />
   ) : (
-    <Navigate to="/projects" replace />
+    <Navigate to="/dashboard" replace />
   );
 }
 
@@ -106,16 +109,16 @@ export const router = createBrowserRouter([
           },
           {
             path: "dashboard",
-            element: <Navigate to="/projects" replace />,
+            element: <UserDashboardPage />,
           },
-          {
-            path: "projects",
-            element: (
-              <RequirePermission perm="PROJECT_VIEW">
-                <ProjectsPage />
-              </RequirePermission>
-            ),
-          },
+          // {
+          //   path: "projects",
+          //   element: (
+          //     <RequirePermission perm="PROJECT_VIEW">
+          //       <ProjectsPage />
+          //     </RequirePermission>
+          //   ),
+          // },
           {
             path: "projects/new",
             element: (
@@ -161,6 +164,14 @@ export const router = createBrowserRouter([
                 ),
               },
               {
+                path: "stories/:storyId",
+                element: (
+                  <RequirePermission perm="STORY_VIEW">
+                    <UserStoryDetailPage />
+                  </RequirePermission>
+                ),
+              },
+              {
                 path: "issues",
                 element: (
                   <RequirePermission perm="STORY_VIEW">
@@ -201,6 +212,10 @@ export const router = createBrowserRouter([
                 <TasksPage />
               </RequirePermission>
             ),
+          },
+          {
+            path: "profile",
+            element: <UsersPage />, // current user profile page
           },
           {
             path: "users",
