@@ -187,33 +187,32 @@ export function IssueCreatePage() {
     }
 
     const payload: IssueCreatePayload = {
-      assigneeId: draft.assigneeId ? Number(draft.assigneeId) : null,
       title: draft.title.trim(),
       description: draft.description.trim(),
-      dueDate: draft.dueDate,
-      isBlocked: draft.isBlocked,
       status: draft.status,
       type: draft.type,
       severity: draft.severity,
       priority: draft.priority,
-      tagIds: draft.tags.map((tag) => tag.id),
-      watcherIds: draft.watcherIds,
+      ...(draft.assigneeId ? { assigneeId: Number(draft.assigneeId) } : {}),
+      ...(draft.dueDate ? { dueDate: draft.dueDate } : {}),
+      ...(draft.isBlocked ? { isBlocked: draft.isBlocked } : {}),
+      ...(draft.tags.length > 0 ? { tagIds: draft.tags.map((tag) => tag.id) } : {}),
+      ...(draft.watcherIds.length > 0 ? { watcherIds: draft.watcherIds } : {}),
     };
 
     setIsSubmitting(true);
     try {
       const issue = await createIssueMutation.mutateAsync(payload);
-      const postCreateTasks: Promise<unknown>[] = attachments.map((file) =>
-        uploadIssueAttachment(issue.id, file),
+      await Promise.all(
+        attachments.map((file) => uploadIssueAttachment(issue.id, file)),
       );
+
       const initialComment = draft.initialComment.trim();
       if (initialComment) {
-        postCreateTasks.push(addIssueComment(issue.id, initialComment));
+        await addIssueComment(issue.id, initialComment);
       }
-      if (postCreateTasks.length > 0) {
-        await Promise.allSettled(postCreateTasks);
-      }
-      navigate(`/projects/${projectId}/issues/${issue.id}`);
+
+      navigate(`/projects/${projectId}/issues`);
     } catch (error) {
       setValidationError(getApiErrorMessage(error));
       setIsSubmitting(false);

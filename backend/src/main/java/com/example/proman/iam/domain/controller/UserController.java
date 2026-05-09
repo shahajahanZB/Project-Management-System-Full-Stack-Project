@@ -14,6 +14,9 @@ import java.util.Map;
 @RequestMapping("/api/v1/iam")
 public class UserController {
 
+    private static final String CAN_VIEW_USERS =
+            "hasAnyRole('ADMIN','SUPERADMIN') or hasAuthority('USER_VIEW_ALL')";
+
     private final AuthService authService;
     private final RolePermissionService rolePermissionService;
 
@@ -44,33 +47,36 @@ public class UserController {
     }
 
     @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CurrentUserDTO> getCurrentUser() {
         return ResponseEntity.ok(authService.getCurrentUser());
     }
 
-//    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/assign-roles")
+    @PreAuthorize("hasAuthority('MANAGE_ROLES')")
     public ResponseEntity<List<UserResponse>> assignRolesToUser(@RequestBody AssignRolesRequest req) {
         return ResponseEntity.ok(authService.assignRoles(req.getUserIds(), req.getRoleId()));
     }
 
-    @PreAuthorize("hasAuthority('USER_VIEW_ALL')")
+    @PreAuthorize(CAN_VIEW_USERS)
     @GetMapping("/users")
     public ResponseEntity<List<UserWithRolesDTO>> getAllUsersWithRoles() {
         return ResponseEntity.ok(authService.getAllUsersWithRoles());
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+    @PreAuthorize("hasAuthority('MANAGE_ROLES')")
     @GetMapping("/admin")
     public String adminOnly(){
         return "Hello Admin";
     }
 
+    @PreAuthorize("hasAuthority('USER_VIEW_ALL')")
     @GetMapping("/users/no-roles")
     public ResponseEntity<List<UserResponse>> getUsersWithNoRoles() {
         return ResponseEntity.ok(authService.getUsersWithNoRoles());
     }
 
+    @PreAuthorize("hasAuthority('USER_VIEW_ALL')")
     @GetMapping
     public ResponseEntity<List<UserRoleResponseDTO>> getUsersByRole(
             @RequestParam String role
@@ -81,7 +87,7 @@ public class UserController {
     }
 
     @PostMapping("/deassign")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+    @PreAuthorize("hasAuthority('MANAGE_ROLES')")
     public ResponseEntity<List<UserResponse>> deassignRoles(
             @RequestBody AssignRolesRequest dto
     ) {
@@ -89,7 +95,7 @@ public class UserController {
     }
 
     @DeleteMapping("/users/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+    @PreAuthorize("hasAuthority('USER_DELETE')")
     public ResponseEntity<String> deleteUser(@PathVariable Long userId) {
         authService.deleteUser(userId);
         return ResponseEntity.ok("User deleted successfully");

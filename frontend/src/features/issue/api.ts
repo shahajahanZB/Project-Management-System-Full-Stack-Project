@@ -16,8 +16,10 @@ export async function getProjectIssues(projectId: number) {
   return response.data;
 }
 
-export async function getIssue(issueId: number) {
-  const response = await apiClient.get<Issue>(`/v1/issues/${issueId}`);
+export async function getIssue(projectId: number, issueId: number) {
+  const response = await apiClient.get<Issue>(
+    `/v1/projects/${projectId}/issues/${issueId}`,
+  );
   return response.data;
 }
 
@@ -32,13 +34,59 @@ export async function createProjectIssue(
   return response.data;
 }
 
-export async function updateIssue(issueId: number, payload: IssueUpdatePayload) {
-  const response = await apiClient.put<Issue>(`/v1/issues/${issueId}`, payload);
+export async function updateIssue(projectId: number, issueId: number, payload: IssueUpdatePayload) {
+  const response = await apiClient.put<Issue>(
+    `/v1/projects/${projectId}/issues/${issueId}`,
+    payload,
+  );
   return response.data;
 }
 
-export async function deleteIssue(issueId: number) {
-  await apiClient.delete(`/v1/issues/${issueId}`);
+export async function deleteIssue(projectId: number, issueId: number) {
+  await apiClient.delete(`/v1/projects/${projectId}/issues/${issueId}`);
+}
+
+export async function assignIssueAssignee(
+  projectId: number,
+  issueId: number,
+  assigneeId: number,
+) {
+  const response = await apiClient.patch<Issue>(
+    `/v1/projects/${projectId}/issues/${issueId}/assignee`,
+    { assigneeId },
+  );
+  return response.data;
+}
+
+export async function removeIssueAssignee(projectId: number, issueId: number) {
+  const response = await apiClient.delete<Issue>(
+    `/v1/projects/${projectId}/issues/${issueId}/assignee`,
+  );
+  return response.data;
+}
+
+export async function addIssueWatchers(
+  projectId: number,
+  issueId: number,
+  userIds: number[],
+) {
+  const response = await apiClient.post<Issue>(
+    `/v1/projects/${projectId}/issues/${issueId}/watchers`,
+    { userIds },
+  );
+  return response.data;
+}
+
+export async function removeIssueWatchers(
+  projectId: number,
+  issueId: number,
+  userIds: number[],
+) {
+  const response = await apiClient.delete<Issue>(
+    `/v1/projects/${projectId}/issues/${issueId}/watchers`,
+    { data: { userIds } },
+  );
+  return response.data;
 }
 
 export async function getIssueTags() {
@@ -51,24 +99,53 @@ export async function createIssueTag(name: string) {
   return response.data;
 }
 
+export async function getIssueComments(projectId: number, issueId: number) {
+  const response = await apiClient.get<IssueComment[]>(
+    `/v1/projects/${projectId}/issues/${issueId}/comments`,
+  );
+  return response.data;
+}
+
+export async function createIssueComment(
+  projectId: number,
+  issueId: number,
+  content: string,
+) {
+  const response = await apiClient.post<IssueComment>(
+    `/v1/projects/${projectId}/issues/${issueId}/comments`,
+    { content },
+  );
+  return response.data;
+}
+
+export async function updateIssueComment(
+  projectId: number,
+  commentId: number,
+  content: string,
+) {
+  const response = await apiClient.put<IssueComment>(
+    `/v1/projects/${projectId}/issues/comments/${commentId}`,
+    { content },
+  );
+  return response.data;
+}
+
+export async function deleteIssueComment(
+  projectId: number,
+  commentId: number,
+) {
+  await apiClient.delete(
+    `/v1/projects/${projectId}/issues/comments/${commentId}`,
+  );
+}
+
+// Legacy functions kept for backwards compatibility
 export async function addIssueComment(issueId: number, content: string) {
   const response = await apiClient.post<IssueComment>(
     `/v1/issues/${issueId}/comments`,
     { content },
   );
   return response.data;
-}
-
-export async function updateIssueComment(commentId: number, content: string) {
-  const response = await apiClient.put<IssueComment>(
-    `/v1/issues/comments/${commentId}`,
-    { content },
-  );
-  return response.data;
-}
-
-export async function deleteIssueComment(commentId: number) {
-  await apiClient.delete(`/v1/issues/comments/${commentId}`);
 }
 
 export async function uploadIssueAttachment(issueId: number, file: File) {
@@ -78,11 +155,6 @@ export async function uploadIssueAttachment(issueId: number, file: File) {
   const response = await apiClient.post<IssueAttachment>(
     `/v1/issues/${issueId}/attachments`,
     body,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    },
   );
   return response.data;
 }

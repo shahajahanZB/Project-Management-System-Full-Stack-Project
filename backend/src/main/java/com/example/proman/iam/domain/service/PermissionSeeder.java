@@ -22,7 +22,7 @@ public class PermissionSeeder implements ApplicationRunner {
             "USER_UPDATE",
             "USER_DELETE",
             "USER_VIEW_ALL",
-            "ROLE_MANAGE",
+            "MANAGE_ROLES",
             "PROJECT_CREATE",
             "PROJECT_VIEW",
             "PROJECT_MANAGE_MEMBERS",

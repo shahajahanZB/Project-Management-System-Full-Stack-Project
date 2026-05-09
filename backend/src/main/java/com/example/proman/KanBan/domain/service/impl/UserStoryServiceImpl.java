@@ -106,6 +106,24 @@ public class UserStoryServiceImpl implements UserStoryService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<UserStoryResponseDTO> searchUserStoriesByProject(Long projectId, String query) {
+        getAccessibleProject(projectId);
+        String normalizedQuery = query == null ? "" : query.trim();
+        if (normalizedQuery.isBlank()) {
+            return userStoryRepository.findAllByProject_IdOrderByCreatedDateDesc(projectId)
+                    .stream()
+                    .map(this::mapStory)
+                    .toList();
+        }
+
+        return userStoryRepository.searchByProjectIdAndQuery(projectId, normalizedQuery)
+                .stream()
+                .map(this::mapStory)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<UserStoryResponseDTO> getUserStoriesByEpic(Long epicId) {
         EpicEntity epic = getAccessibleEpic(epicId);
         return userStoryRepository.findAllByEpic_IdOrderByCreatedDateDesc(epic.getId())

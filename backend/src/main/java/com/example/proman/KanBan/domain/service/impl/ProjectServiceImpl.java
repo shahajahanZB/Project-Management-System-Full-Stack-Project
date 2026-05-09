@@ -2,6 +2,7 @@ package com.example.proman.KanBan.domain.service.impl;
 
 import com.example.proman.KanBan.domain.Entity.ProjectEntity;
 import com.example.proman.KanBan.domain.Entity.ProjectMembershipEntity;
+import com.example.proman.KanBan.domain.Entity.UserStoryStatusEntity;
 import com.example.proman.KanBan.domain.dto.ProjectCreateRequestDTO;
 import com.example.proman.KanBan.domain.dto.ProjectMembershipCreateRequestDTO;
 import com.example.proman.KanBan.domain.dto.ProjectMembershipRemoveRequestDTO;
@@ -9,6 +10,7 @@ import com.example.proman.KanBan.domain.dto.ProjectMembershipResponseDTO;
 import com.example.proman.KanBan.domain.dto.ProjectResponseDTO;
 import com.example.proman.KanBan.domain.repository.ProjectMembershipRepository;
 import com.example.proman.KanBan.domain.repository.ProjectRepository;
+import com.example.proman.KanBan.domain.repository.UserStoryStatusRepository;
 import com.example.proman.KanBan.domain.service.ProjectService;
 import com.example.proman.iam.domain.entity.UserEntity;
 import com.example.proman.iam.domain.entity.UserPrincipal;
@@ -28,13 +30,16 @@ public class ProjectServiceImpl implements ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ProjectMembershipRepository projectMembershipRepository;
+    private final UserStoryStatusRepository userStoryStatusRepository;
     private final UserRepository userRepository;
 
     public ProjectServiceImpl(ProjectRepository projectRepository,
                               ProjectMembershipRepository projectMembershipRepository,
+                              UserStoryStatusRepository userStoryStatusRepository,
                               UserRepository userRepository) {
         this.projectRepository = projectRepository;
         this.projectMembershipRepository = projectMembershipRepository;
+        this.userStoryStatusRepository = userStoryStatusRepository;
         this.userRepository = userRepository;
     }
 
@@ -55,7 +60,9 @@ public class ProjectServiceImpl implements ProjectService {
         project.setDescription(request.getDescription().trim());
         project.setOwner(currentUser);
 
-        return mapProject(projectRepository.save(project));
+        ProjectEntity saved = projectRepository.save(project);
+        seedDefaultUserStoryStatuses(saved);
+        return mapProject(saved);
     }
 
     @Override
@@ -218,6 +225,24 @@ public class ProjectServiceImpl implements ProjectService {
         dto.setUsername(membership.getUser().getUsername());
         dto.setEmail(membership.getUser().getEmail());
         return dto;
+    }
+
+    private void seedDefaultUserStoryStatuses(ProjectEntity project) {
+        createStatusIfMissing(project, "NEW", false, 1);
+        createStatusIfMissing(project, "CLOSED", true, 2);
+    }
+
+    private void createStatusIfMissing(ProjectEntity project, String name, boolean closed, int sortOrder) {
+        if (userStoryStatusRepository.existsByProject_IdAndNameIgnoreCase(project.getId(), name)) {
+            return;
+        }
+
+        UserStoryStatusEntity status = new UserStoryStatusEntity();
+        status.setProject(project);
+        status.setName(name);
+        status.setClosed(closed);
+        status.setSortOrder(sortOrder);
+        userStoryStatusRepository.save(status);
     }
 
     private UserEntity getCurrentUser() {

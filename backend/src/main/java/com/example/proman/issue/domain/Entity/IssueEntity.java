@@ -1,5 +1,6 @@
 package com.example.proman.issue.domain.Entity;
 import com.example.proman.KanBan.domain.Entity.ProjectEntity;
+import com.example.proman.iam.domain.entity.UserEntity;
 import com.example.proman.issue.domain.Enums.*;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -24,8 +25,14 @@ public class IssueEntity {
     @JoinColumn(name = "project_id", nullable = false)
     private ProjectEntity project;
 
-    @Column(name = "assigneeid", nullable = false)
-    private Long assigneeId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assignee_id")
+    private UserEntity assignee;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "created_by", nullable = false)
+    private UserEntity createdBy;
+
 
     @Column(nullable = false, length = 255)
     private String title;
@@ -62,8 +69,6 @@ public class IssueEntity {
     @Column(nullable = false, length = 50)
     private IssuePriority priority;
 
-    @Column(name = "created_by", nullable = false)
-    private Long createdById;
 
     @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<IssueCommentEntity> comments = new ArrayList<>();

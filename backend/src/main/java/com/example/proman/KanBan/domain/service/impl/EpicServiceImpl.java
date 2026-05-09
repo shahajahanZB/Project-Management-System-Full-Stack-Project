@@ -5,6 +5,7 @@ import com.example.proman.KanBan.domain.Entity.ProjectEntity;
 import com.example.proman.KanBan.domain.dto.EpicAssigneesRequestDTO;
 import com.example.proman.KanBan.domain.dto.EpicCreateRequestDTO;
 import com.example.proman.KanBan.domain.dto.EpicResponseDTO;
+import com.example.proman.KanBan.domain.dto.EpicUserStoryResponseDTO;
 import com.example.proman.KanBan.domain.repository.EpicRepository;
 import com.example.proman.KanBan.domain.repository.ProjectMembershipRepository;
 import com.example.proman.KanBan.domain.repository.ProjectRepository;
@@ -67,6 +68,7 @@ public class EpicServiceImpl implements EpicService {
     }
 
     @Override
+    @Transactional
     public List<EpicResponseDTO> getEpicsByProject(Long projectId) {
         getAccessibleProject(projectId);
         return epicRepository.findAllByProject_IdOrderByIdDesc(projectId)
@@ -77,6 +79,7 @@ public class EpicServiceImpl implements EpicService {
     }
 
     @Override
+    @Transactional
     public EpicResponseDTO getEpicById(Long epicId) {
         EpicEntity epic = getAccessibleEpic(epicId);
         reconcileEpicLifecycle(epic);
@@ -197,6 +200,19 @@ public class EpicServiceImpl implements EpicService {
         dto.setAssignedUserIds(epic.getAssignedUsers().stream()
                 .map(UserEntity::getId)
                 .collect(Collectors.toSet()));
+        dto.setUserStories(userStoryRepository.findAllByEpic_IdOrderByCreatedDateDesc(epic.getId())
+                .stream()
+                .map(this::mapEpicUserStory)
+                .toList());
+        return dto;
+    }
+
+    private EpicUserStoryResponseDTO mapEpicUserStory(com.example.proman.KanBan.domain.Entity.UserStoryEntity story) {
+        EpicUserStoryResponseDTO dto = new EpicUserStoryResponseDTO();
+        dto.setId(story.getId());
+        dto.setName(story.getTitle());
+        dto.setStatus(story.getStatus() == null ? null : story.getStatus().getName());
+        dto.setEndDate(story.getEndDate());
         return dto;
     }
 

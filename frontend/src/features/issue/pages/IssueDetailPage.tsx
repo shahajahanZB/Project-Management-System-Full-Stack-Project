@@ -30,12 +30,17 @@ import { IssueAvatar } from "../components/IssueAvatar";
 import { IssueWorkspaceShell } from "../components/IssueWorkspaceShell";
 import {
   useAddIssueCommentMutation,
+  useAddIssueWatchersMutation,
+  useAssignIssueAssigneeMutation,
   useCreateIssueTagMutation,
   useDeleteIssueAttachmentMutation,
   useDeleteIssueCommentMutation,
   useDeleteIssueMutation,
+  useGetIssueComments,
   useIssue,
   useIssueTags,
+  useRemoveIssueAssigneeMutation,
+  useRemoveIssueWatchersMutation,
   useUpdateIssueCommentMutation,
   useUpdateIssueMutation,
   useUploadIssueAttachmentMutation,
@@ -88,17 +93,22 @@ export function IssueDetailPage() {
   const projectQuery = useProject(projectIdParam);
   const membersQuery = useProjectMembers(projectIdParam);
   const currentUserQuery = useGetCurrentUser();
-  const issueQuery = useIssue(issueId, hasIssueId);
+  const issueQuery = useIssue(projectId, issueId, hasIssueId);
+  const commentsQuery = useGetIssueComments(projectId, issueId, hasIssueId && hasProjectId);
   const tagsQuery = useIssueTags();
 
   const updateIssueMutation = useUpdateIssueMutation(projectId, issueId);
   const deleteIssueMutation = useDeleteIssueMutation(projectId);
   const createTagMutation = useCreateIssueTagMutation();
-  const addCommentMutation = useAddIssueCommentMutation(issueId);
-  const updateCommentMutation = useUpdateIssueCommentMutation(issueId);
-  const deleteCommentMutation = useDeleteIssueCommentMutation(issueId);
+  const addCommentMutation = hasProjectId && hasIssueId ? useAddIssueCommentMutation(projectId, issueId) : null;
+  const updateCommentMutation = hasProjectId && hasIssueId ? useUpdateIssueCommentMutation(projectId, issueId) : null;
+  const deleteCommentMutation = hasProjectId && hasIssueId ? useDeleteIssueCommentMutation(projectId, issueId) : null;
   const uploadAttachmentMutation = useUploadIssueAttachmentMutation(issueId);
   const deleteAttachmentMutation = useDeleteIssueAttachmentMutation(issueId);
+  const assignAssigneeMutation = useAssignIssueAssigneeMutation(projectId, issueId);
+  const removeAssigneeMutation = useRemoveIssueAssigneeMutation(projectId, issueId);
+  const addWatchersMutation = hasProjectId && hasIssueId ? useAddIssueWatchersMutation(projectId, issueId) : null;
+  const removeWatchersMutation = hasProjectId && hasIssueId ? useRemoveIssueWatchersMutation(projectId, issueId) : null;
 
   const users: IssueUser[] = useMemo(
     () => buildIssueUsers(membersQuery.data ?? [], currentUserQuery.data),
@@ -107,7 +117,7 @@ export function IssueDetailPage() {
 
   const issue = issueQuery.data;
   const currentUser = currentUserQuery.data;
-  const comments = issue?.comments ?? [];
+  const comments = commentsQuery.data ?? [];
   const activities = issue?.activities ?? [];
   const attachments = issue?.attachments ?? [];
   const tags = tagsQuery.data ?? [];
@@ -219,23 +229,24 @@ export function IssueDetailPage() {
 
   const handleAddWatcher = (value: string) => {
     const userId = Number(value);
-    if (!userId || selectedWatcherIds.has(userId)) return;
-    persistIssuePatch(
-      { watcherIds: [...selectedWatcherIds, userId] },
-      "Watcher added.",
-    );
+    if (!userId || selectedWatcherIds.has(userId) || !addWatchersMutation) return;
+    addWatchersMutation.mutate([userId], {
+      onSuccess: () => setMessage("Watcher added."),
+      onError: () => setMessage("Watcher could not be added."),
+    });
   };
 
   const handleRemoveWatcher = (userId: number) => {
-    persistIssuePatch(
-      { watcherIds: [...selectedWatcherIds].filter((id) => id !== userId) },
-      "Watcher removed.",
-    );
+    if (!removeWatchersMutation) return;
+    removeWatchersMutation.mutate([userId], {
+      onSuccess: () => setMessage("Watcher removed."),
+      onError: () => setMessage("Watcher could not be removed."),
+    });
   };
 
   const handleAddComment = () => {
     const content = commentDraft.trim();
-    if (!content || !canAddComment) return;
+    if (!content || !canAddComment || !addCommentMutation) return;
 
     addCommentMutation.mutate(content, {
       onSuccess: () => {
@@ -257,14 +268,24 @@ export function IssueDetailPage() {
     });
   };
 
-  const handleUploadAttachments = (files: FileList | null) => {
+  const handleUploadAttachments = async (files: FileList | null) => {
     if (!files?.length || !canEdit) return;
 
-    Array.from(files).forEach((file) => {
-      uploadAttachmentMutation.mutate(file, {
-        onError: () => setMessage(`Attachment could not be uploaded: ${file.name}`),
-      });
-    });
+    const selectedFiles = Array.from(files);
+    setMessage("");
+
+    try {
+      await Promise.all(
+        selectedFiles.map((file) => uploadAttachmentMutation.mutateAsync(file)),
+      );
+      setMessage(
+        selectedFiles.length === 1
+          ? "Attachment uploaded."
+          : `${selectedFiles.length} attachments uploaded.`,
+      );
+    } catch {
+      setMessage("One or more attachments could not be uploaded.");
+    }
   };
 
   if (issueQuery.isLoading) {
@@ -441,7 +462,7 @@ export function IssueDetailPage() {
                   <div className="mt-3 flex justify-end">
                     <Button
                       onClick={handleAddComment}
-                      disabled={!commentDraft.trim() || !canAddComment}
+                      disabled={!commentDraft.trim() || !canAddComment || !addCommentMutation}
                     >
                       <MessageSquare className="size-4" aria-hidden="true" />
                       Add comment
@@ -457,7 +478,7 @@ export function IssueDetailPage() {
                           users={users}
                           canManage={canManageComment(comment.userId, currentUser)}
                           onEdit={(commentId, content) =>
-                            updateCommentMutation.mutate(
+                            updateCommentMutation?.mutate(
                               { commentId, content },
                               {
                                 onSuccess: () => setMessage("Comment saved."),
@@ -467,7 +488,7 @@ export function IssueDetailPage() {
                             )
                           }
                           onDelete={(commentId) =>
-                            deleteCommentMutation.mutate(commentId, {
+                            deleteCommentMutation?.mutate(commentId, {
                               onSuccess: () => setMessage("Comment deleted."),
                               onError: () =>
                                 setMessage("Comment could not be deleted."),
@@ -529,7 +550,7 @@ export function IssueDetailPage() {
                       multiple
                       className="hidden"
                       onChange={(event) => {
-                        handleUploadAttachments(event.target.files);
+                        void handleUploadAttachments(event.target.files);
                         event.currentTarget.value = "";
                       }}
                     />
@@ -666,18 +687,24 @@ export function IssueDetailPage() {
                 />
                 <select
                   value={issue.assigneeId ?? ""}
-                  onChange={(event) =>
-                    persistIssuePatch(
-                      { assigneeId: Number(event.target.value) },
-                      "Assignee saved.",
-                    )
-                  }
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (value) {
+                      assignAssigneeMutation.mutate(Number(value), {
+                        onSuccess: () => setMessage("Assignee saved."),
+                        onError: () => setMessage("Assignee could not be saved."),
+                      });
+                    } else {
+                      removeAssigneeMutation.mutate(undefined, {
+                        onSuccess: () => setMessage("Assignee removed."),
+                        onError: () => setMessage("Assignee could not be removed."),
+                      });
+                    }
+                  }}
                   className="h-10 min-w-0 flex-1 rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50"
                   disabled={!canEdit}
                 >
-                  <option value="" disabled>
-                    Select assignee
-                  </option>
+                  <option value="">Remove assignee</option>
                   {users.map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.username}

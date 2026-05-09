@@ -41,8 +41,10 @@ export type KanbanCard = {
   columnId: string;
   assigneeId: string | null;
   tagIds: string[];
-  points: KanbanPoints;
+  endDate?: string | null;
   attachments: KanbanAttachment[];
+  attachmentCount?: number;
+  commentCount?: number;
   updatedAt: string;
 };
 
@@ -53,7 +55,7 @@ export type KanbanDraft = {
   columnId: string;
   assigneeId: string | null;
   tagIds: string[];
-  points: KanbanPoints;
+  endDate?: string | null;
   attachments: KanbanAttachment[];
 };
 
@@ -80,6 +82,10 @@ export type UserStory = {
   assignees: KanbanUser[];
   tags: KanbanTag[];
   attachments: KanbanAttachment[];
+  attachmentCount?: number;
+  commentCount?: number;
+  activityCount?: number;
+  endDate?: string | null;
   updatedAt?: string;
 };
 
@@ -115,14 +121,66 @@ export type UserStoryTagPayload = {
 
 export type UserStoryComment = {
   id: number;
+  userStoryId?: number;
+  userId?: number | null;
   comment: string;
   createdAt?: string;
   updatedAt?: string;
+  modifiedAt?: string;
 };
 
 export type UserStoryActivity = {
   id: number;
+  userStoryId?: number;
+  userId?: number | null;
+  username?: string;
   message?: string;
+  activity?: string;
   action?: string;
   createdAt?: string;
 };
+
+export type StoredBoard = {
+  columns: KanbanColumn[];
+  cards: KanbanCard[];
+  tags: KanbanTag[];
+};
+
+export type KanbanModalMode = "create" | "edit";
+
+export type CardModalState = {
+  mode: KanbanModalMode;
+  cardId?: string;
+  storyId?: number;
+  draft: KanbanDraft;
+};
+
+export type ProjectMemberLike = {
+  userId?: string | number;
+  id?: string | number;
+  username?: string;
+  name?: string;
+  email?: string;
+};
+
+export type StoryAssigneeSync = {
+  storyId: number;
+  previousAssigneeId: string | null;
+  nextAssigneeId: string | null;
+};
+
+export type StoryTagSync = {
+  storyId: number;
+  previousTagIds: string[];
+  nextTagIds: string[];
+};
+
+export type DragPayload =
+  | {
+      type: "card";
+      cardId: string;
+    }
+  | {
+      type: "column";
+      columnId: string;
+    };

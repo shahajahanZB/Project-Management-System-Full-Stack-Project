@@ -47,11 +47,11 @@ export function LoginPage() {
             const roles = (currentUser.roles ?? []).map((role) => role.name);
             const hasAdminRole = roles.some(isAdminRole);
 
-            navigate(hasAdminRole ? "/admin" : "/projects", {
+            navigate(hasAdminRole ? "/admin" : "/dashboard", {
               replace: true,
             });
           } catch {
-            navigate("/projects", { replace: true });
+            navigate("/dashboard", { replace: true });
           }
         },
       },
