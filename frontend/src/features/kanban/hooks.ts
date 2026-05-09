@@ -14,6 +14,7 @@ import {
   getUserStoriesByEpic,
   getUserStoriesByProject,
   getUserStory,
+  searchUserStories,
   getUserStoryActivities,
   getUserStoryAttachments,
   getUserStoryComments,
@@ -39,7 +40,9 @@ import type {
 export const kanbanQueryKeys = {
   statuses: (projectId?: string | number) =>
     ["kanban", "statuses", projectId ?? "none"] as const,
-  stories: (projectId?: string | number) =>
+  stories: (projectId?: string | number, query?: string) =>
+    ["kanban", "stories", projectId ?? "none", query?.trim() ?? ""] as const,
+  storyList: (projectId?: string | number) =>
     ["kanban", "stories", projectId ?? "none"] as const,
   story: (storyId?: string | number) =>
     ["kanban", "story", storyId ?? "none"] as const,
@@ -90,10 +93,16 @@ export function useDeleteUserStoryStatus(projectId?: string | number) {
   });
 }
 
-export function useUserStoriesByProject(projectId?: string | number) {
+export function useUserStoriesByProject(
+  projectId?: string | number,
+  searchQuery?: string,
+) {
   return useQuery({
-    queryKey: kanbanQueryKeys.stories(projectId),
-    queryFn: () => getUserStoriesByProject(projectId as string | number),
+    queryKey: kanbanQueryKeys.stories(projectId, searchQuery),
+    queryFn: () =>
+      searchQuery?.trim()
+        ? searchUserStories(projectId as string | number, searchQuery.trim())
+        : getUserStoriesByProject(projectId as string | number),
     enabled: !!projectId,
   });
 }
@@ -130,7 +139,7 @@ export function useCreateUserStory(projectId?: string | number) {
     onSuccess: (_data, variables) => {
       console.log("Story created successfully:", variables);
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.stories(projectId),
+        queryKey: kanbanQueryKeys.storyList(projectId),
       });
       if (variables.epicId) {
         queryClient.invalidateQueries({
@@ -158,7 +167,7 @@ export function useUpdateUserStory(projectId?: string | number) {
     onSuccess: (_data, variables) => {
       console.log("Update story mutation success, invalidating queries");
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.stories(projectId),
+        queryKey: kanbanQueryKeys.storyList(projectId),
       });
       queryClient.invalidateQueries({
         queryKey: kanbanQueryKeys.story(variables.storyId),
@@ -187,7 +196,7 @@ export function useUpdateUserStoryStatus(projectId?: string | number) {
         statusId: variables.payload.statusId,
       });
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.stories(projectId),
+        queryKey: kanbanQueryKeys.storyList(projectId),
       });
       queryClient.invalidateQueries({
         queryKey: kanbanQueryKeys.story(variables.storyId),
@@ -228,7 +237,7 @@ export function useAssignUsersToStory(projectId?: string | number) {
     }) => assignUsersToStory(storyId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.stories(projectId),
+        queryKey: kanbanQueryKeys.storyList(projectId),
       });
     },
   });
@@ -247,7 +256,7 @@ export function useRemoveUsersFromStory(projectId?: string | number) {
     }) => removeUsersFromStory(storyId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.stories(projectId),
+        queryKey: kanbanQueryKeys.storyList(projectId),
       });
     },
   });
@@ -290,7 +299,7 @@ export function useAddTagToStory(projectId?: string | number) {
     }) => addTagToStory(storyId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.stories(projectId),
+        queryKey: kanbanQueryKeys.storyList(projectId),
       });
     },
   });
@@ -309,7 +318,7 @@ export function useRemoveTagFromStory(projectId?: string | number) {
     }) => removeTagFromStory(storyId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.stories(projectId),
+        queryKey: kanbanQueryKeys.storyList(projectId),
       });
     },
   });
