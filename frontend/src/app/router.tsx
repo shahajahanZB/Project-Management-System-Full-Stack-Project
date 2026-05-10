@@ -31,6 +31,7 @@ import {
   IssueListPage,
 } from "@/features/issue/pages";
 import { ProjectKanbanPage } from "@/features/projects/pages/ProjectKanbanPage";
+import { UserStoryDetailPage } from "@/features/kanban/pages/UserStoryDetailPage";
 import { UserDashboardPage } from "@/features/dashboard/pages/UserDashboardPage";
 import { ProjectsPage } from "@/features/projects/pages/ProjectsPage";
 import { ProjectsCreatePage } from "@/features/projects/pages/ProjectsCreatePage";
@@ -159,6 +160,14 @@ export const router = createBrowserRouter([
                 element: (
                   <RequirePermission perm="STORY_VIEW">
                     <ProjectKanbanPage />
+                  </RequirePermission>
+                ),
+              },
+              {
+                path: "stories/:storyId",
+                element: (
+                  <RequirePermission perm="STORY_VIEW">
+                    <UserStoryDetailPage />
                   </RequirePermission>
                 ),
               },

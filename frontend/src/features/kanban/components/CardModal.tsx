@@ -1,16 +1,23 @@
 import { useCallback, type ChangeEvent, type FormEvent } from "react";
-import { ChevronDown, Loader2, Plus, Tag, UploadCloud, UserRoundCheck, X } from "lucide-react";
+import {
+  ChevronDown,
+  CalendarDays,
+  Loader2,
+  Plus,
+  Tag,
+  UploadCloud,
+  UserRoundCheck,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
-import { POINT_KEYS } from "../constants";
 import type {
   CardModalState,
   KanbanDraft,
-  KanbanPointKey,
   KanbanTag,
   KanbanUser,
 } from "../types";
-import { formatBytes, totalPoints } from "../utils";
+import { formatBytes } from "../utils";
 import { Avatar } from "./Avatar";
 import { MetricButton } from "./MetricButton";
 import { SelectField } from "./SelectField";
@@ -29,7 +36,6 @@ type CardModalProps = {
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onDraftChange: (partial: Partial<KanbanDraft>) => void;
-  onPointChange: (key: KanbanPointKey, value: string) => void;
   onCreateTag: () => void;
   onAddTag: (tagId: string) => void;
   onRemoveTag: (tagId: string) => void;
@@ -53,7 +59,6 @@ export function CardModal({
   onClose,
   onSubmit,
   onDraftChange,
-  onPointChange,
   onCreateTag,
   onAddTag,
   onRemoveTag,
@@ -279,7 +284,9 @@ export function CardModal({
           <div className="rounded-md border border-slate-200 p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <Avatar user={users.find((user) => user.id === draft.assigneeId)} />
+                <Avatar
+                  user={users.find((user) => user.id === draft.assigneeId)}
+                />
                 <div className="min-w-0">
                   <p className="text-xs font-bold uppercase text-slate-500">
                     Assignee
@@ -331,35 +338,32 @@ export function CardModal({
           </div>
 
           <div>
-            <p className="text-xs font-bold uppercase text-slate-500">Points</p>
-            <div className="mt-2 overflow-hidden rounded-md border border-slate-200">
-              {POINT_KEYS.map((item) => (
-                <label
-                  key={item.key}
-                  className="grid grid-cols-[1fr_5rem] items-center border-b border-slate-200 last:border-b-0"
-                >
-                  <span className="bg-slate-50 px-3 py-2 text-sm font-medium text-slate-600">
-                    {item.label}
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={draft.points[item.key]}
-                    onChange={(event) =>
-                      onPointChange(item.key, event.target.value)
+            <p className="text-xs font-bold uppercase text-slate-500">
+              Due Date
+            </p>
+            <div className="mt-2">
+              <label className="relative">
+                <CalendarDays className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="datetime-local"
+                  value={
+                    draft.endDate
+                      ? new Date(draft.endDate).toISOString().slice(0, 16)
+                      : ""
+                  }
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (!value) {
+                      onDraftChange({ endDate: null });
+                    } else {
+                      const date = new Date(value);
+                      onDraftChange({ endDate: date.toISOString() });
                     }
-                    className="h-10 border-l border-slate-200 px-3 text-right text-sm font-semibold outline-none focus:bg-teal-50"
-                  />
-                </label>
-              ))}
-              <div className="grid grid-cols-[1fr_5rem] items-center bg-slate-200">
-                <span className="px-3 py-2 text-sm font-bold text-slate-700">
-                  Total
-                </span>
-                <span className="border-l border-slate-300 px-3 py-2 text-right text-sm font-bold text-slate-900">
-                  {totalPoints(draft.points)}
-                </span>
-              </div>
+                  }}
+                  className="w-full rounded-md border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  placeholder="No due date"
+                />
+              </label>
             </div>
           </div>
 

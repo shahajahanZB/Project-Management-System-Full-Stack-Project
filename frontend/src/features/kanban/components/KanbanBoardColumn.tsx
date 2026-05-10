@@ -30,7 +30,6 @@ type KanbanBoardColumnProps = {
     event: DragEvent<HTMLButtonElement>,
     targetCard: KanbanCard,
   ) => void;
-  onCreateStory: (columnId: string) => void;
   onDeleteColumn: (column: KanbanColumn) => void;
   onEditCard: (card: KanbanCard) => void;
 };
@@ -52,7 +51,6 @@ export function KanbanBoardColumn({
   onCardDragStart,
   onCardDragEnd,
   onCardDrop,
-  onCreateStory,
   onDeleteColumn,
   onEditCard,
 }: KanbanBoardColumnProps) {
@@ -85,14 +83,6 @@ export function KanbanBoardColumn({
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => onCreateStory(column.id)}
-            className="inline-flex size-8 items-center justify-center rounded text-slate-500 transition hover:bg-white hover:text-teal-700"
-            title={`Add story to ${column.title}`}
-          >
-            <Plus className="size-4" />
-          </button>
           <button
             type="button"
             onClick={() => onDeleteColumn(column)}

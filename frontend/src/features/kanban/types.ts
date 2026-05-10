@@ -41,7 +41,7 @@ export type KanbanCard = {
   columnId: string;
   assigneeId: string | null;
   tagIds: string[];
-  points: KanbanPoints;
+  endDate?: string | null;
   attachments: KanbanAttachment[];
   attachmentCount?: number;
   commentCount?: number;
@@ -55,7 +55,7 @@ export type KanbanDraft = {
   columnId: string;
   assigneeId: string | null;
   tagIds: string[];
-  points: KanbanPoints;
+  endDate?: string | null;
   attachments: KanbanAttachment[];
 };
 
@@ -85,6 +85,7 @@ export type UserStory = {
   attachmentCount?: number;
   commentCount?: number;
   activityCount?: number;
+  endDate?: string | null;
   updatedAt?: string;
 };
 

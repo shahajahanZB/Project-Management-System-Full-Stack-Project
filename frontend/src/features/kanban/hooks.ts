@@ -14,6 +14,7 @@ import {
   getUserStoriesByEpic,
   getUserStoriesByProject,
   getUserStory,
+  searchUserStories,
   getUserStoryActivities,
   getUserStoryAttachments,
   getUserStoryComments,
@@ -39,7 +40,9 @@ import type {
 export const kanbanQueryKeys = {
   statuses: (projectId?: string | number) =>
     ["kanban", "statuses", projectId ?? "none"] as const,
-  stories: (projectId?: string | number) =>
+  stories: (projectId?: string | number, query?: string) =>
+    ["kanban", "stories", projectId ?? "none", query?.trim() ?? ""] as const,
+  storyList: (projectId?: string | number) =>
     ["kanban", "stories", projectId ?? "none"] as const,
   story: (storyId?: string | number) =>
     ["kanban", "story", storyId ?? "none"] as const,
@@ -90,10 +93,16 @@ export function useDeleteUserStoryStatus(projectId?: string | number) {
   });
 }
 
-export function useUserStoriesByProject(projectId?: string | number) {
+export function useUserStoriesByProject(
+  projectId?: string | number,
+  searchQuery?: string,
+) {
   return useQuery({
-    queryKey: kanbanQueryKeys.stories(projectId),
-    queryFn: () => getUserStoriesByProject(projectId as string | number),
+    queryKey: kanbanQueryKeys.stories(projectId, searchQuery),
+    queryFn: () =>
+      searchQuery?.trim()
+        ? searchUserStories(projectId as string | number, searchQuery.trim())
+        : getUserStoriesByProject(projectId as string | number),
     enabled: !!projectId,
   });
 }
@@ -127,10 +136,19 @@ export function useCreateUserStory(projectId?: string | number) {
 
   return useMutation({
     mutationFn: (payload: CreateUserStoryPayload) => createUserStory(payload),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      console.log("Story created successfully:", variables);
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.stories(projectId),
+        queryKey: kanbanQueryKeys.storyList(projectId),
       });
+      if (variables.epicId) {
+        queryClient.invalidateQueries({
+          queryKey: ["epics", "detail", String(variables.epicId)],
+        });
+      }
+    },
+    onError: (error) => {
+      console.error("Failed to create story:", error);
     },
   });
 }
@@ -147,12 +165,16 @@ export function useUpdateUserStory(projectId?: string | number) {
       payload: UpdateUserStoryPayload;
     }) => updateUserStory(storyId, payload),
     onSuccess: (_data, variables) => {
+      console.log("Update story mutation success, invalidating queries");
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.stories(projectId),
+        queryKey: kanbanQueryKeys.storyList(projectId),
       });
       queryClient.invalidateQueries({
         queryKey: kanbanQueryKeys.story(variables.storyId),
       });
+    },
+    onError: (error) => {
+      console.error("Update story mutation error:", error);
     },
   });
 }
@@ -169,11 +191,22 @@ export function useUpdateUserStoryStatus(projectId?: string | number) {
       payload: UpdateUserStoryStatusPayload;
     }) => updateUserStoryStatus(storyId, payload),
     onSuccess: (_data, variables) => {
+      console.log("useUpdateUserStoryStatus: Status update successful", {
+        storyId: variables.storyId,
+        statusId: variables.payload.statusId,
+      });
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.stories(projectId),
+        queryKey: kanbanQueryKeys.storyList(projectId),
       });
       queryClient.invalidateQueries({
         queryKey: kanbanQueryKeys.story(variables.storyId),
+      });
+    },
+    onError: (error, variables) => {
+      console.error("useUpdateUserStoryStatus: Status update failed", {
+        storyId: variables.storyId,
+        statusId: variables.payload.statusId,
+        error: (error as Error)?.message,
       });
     },
   });
@@ -204,7 +237,7 @@ export function useAssignUsersToStory(projectId?: string | number) {
     }) => assignUsersToStory(storyId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.stories(projectId),
+        queryKey: kanbanQueryKeys.storyList(projectId),
       });
     },
   });
@@ -223,7 +256,7 @@ export function useRemoveUsersFromStory(projectId?: string | number) {
     }) => removeUsersFromStory(storyId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.stories(projectId),
+        queryKey: kanbanQueryKeys.storyList(projectId),
       });
     },
   });
@@ -266,7 +299,7 @@ export function useAddTagToStory(projectId?: string | number) {
     }) => addTagToStory(storyId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.stories(projectId),
+        queryKey: kanbanQueryKeys.storyList(projectId),
       });
     },
   });
@@ -285,7 +318,7 @@ export function useRemoveTagFromStory(projectId?: string | number) {
     }) => removeTagFromStory(storyId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.stories(projectId),
+        queryKey: kanbanQueryKeys.storyList(projectId),
       });
     },
   });
@@ -323,7 +356,8 @@ export function useUpdateUserStoryComment(storyId?: string | number) {
     }: {
       commentId: string | number;
       payload: { comment: string };
-    }) => updateUserStoryComment(storyId as string | number, commentId, payload),
+    }) =>
+      updateUserStoryComment(storyId as string | number, commentId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: kanbanQueryKeys.comments(storyId),
@@ -372,9 +406,13 @@ export function useAddUserStoryAttachment(storyId?: string | number) {
         file,
         metadata,
       ),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      const activeStoryId = variables.storyId ?? storyId;
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.attachments(storyId),
+        queryKey: kanbanQueryKeys.attachments(activeStoryId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: kanbanQueryKeys.story(activeStoryId),
       });
     },
   });
@@ -384,11 +422,21 @@ export function useDeleteUserStoryAttachment(storyId?: string | number) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (attachmentId: string | number) =>
-      deleteUserStoryAttachment(storyId as string | number, attachmentId),
-    onSuccess: () => {
+    mutationFn: (params: {
+      storyId?: string | number;
+      attachmentId: string | number;
+    }) =>
+      deleteUserStoryAttachment(
+        (params.storyId ?? storyId) as string | number,
+        params.attachmentId,
+      ),
+    onSuccess: (_data, variables) => {
+      const activeStoryId = variables.storyId ?? storyId;
       queryClient.invalidateQueries({
-        queryKey: kanbanQueryKeys.attachments(storyId),
+        queryKey: kanbanQueryKeys.attachments(activeStoryId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: kanbanQueryKeys.story(activeStoryId),
       });
     },
   });

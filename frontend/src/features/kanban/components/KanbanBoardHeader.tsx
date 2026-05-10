@@ -1,4 +1,11 @@
-import { Columns3, Filter, LayoutGrid, Loader2, Plus, Search } from "lucide-react";
+import {
+  Columns3,
+  Filter,
+  LayoutGrid,
+  Loader2,
+  Plus,
+  Search,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { KanbanColumn, KanbanTag, KanbanUser } from "../types";
 import { SelectField } from "./SelectField";
@@ -7,7 +14,6 @@ type KanbanBoardHeaderProps = {
   projectName?: string;
   boardTotals: {
     cards: number;
-    points: number;
     assigned: number;
   };
   query: string;
@@ -26,7 +32,8 @@ type KanbanBoardHeaderProps = {
   onTagFilterChange: (value: string) => void;
   onToggleFilters: () => void;
   onToggleAddColumn: () => void;
-  onCreateStory: () => void;
+  onNewStory: () => void;
+  canCreateStory: boolean;
 };
 
 export function KanbanBoardHeader({
@@ -48,7 +55,8 @@ export function KanbanBoardHeader({
   onTagFilterChange,
   onToggleFilters,
   onToggleAddColumn,
-  onCreateStory,
+  onNewStory,
+  canCreateStory,
 }: KanbanBoardHeaderProps) {
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-4 py-4 backdrop-blur lg:px-8">
@@ -65,9 +73,6 @@ export function KanbanBoardHeader({
             <div className="flex flex-wrap gap-2 text-xs font-medium text-slate-600">
               <span className="rounded bg-white px-2 py-1 ring-1 ring-slate-200">
                 {boardTotals.cards} cards
-              </span>
-              <span className="rounded bg-white px-2 py-1 ring-1 ring-slate-200">
-                {boardTotals.points} points
               </span>
               <span className="rounded bg-white px-2 py-1 ring-1 ring-slate-200">
                 {boardTotals.assigned} assigned
@@ -88,6 +93,15 @@ export function KanbanBoardHeader({
           </label>
 
           <div className="flex gap-2">
+            {canCreateStory && (
+              <Button
+                onClick={onNewStory}
+                className="h-10 border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 hover:text-teal-800"
+              >
+                <Plus className="size-4" />
+                New story
+              </Button>
+            )}
             <Button
               variant="secondary"
               onClick={onToggleFilters}
@@ -103,13 +117,6 @@ export function KanbanBoardHeader({
             >
               <Columns3 className="size-4" />
               Add column
-            </Button>
-            <Button
-              onClick={onCreateStory}
-              className="bg-teal-600 text-white hover:bg-teal-700"
-            >
-              <Plus className="size-4" />
-              Story
             </Button>
           </div>
         </div>
