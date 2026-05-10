@@ -16,6 +16,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,7 +27,12 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "user_stories")
+@Table(
+        name = "user_stories",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_user_story_project_title", columnNames = {"project_id", "title"})
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
